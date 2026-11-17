@@ -1,0 +1,36 @@
+SDN Worksheet Unit 3 Section 3
+### Question
+
+3. Virtual Switches and Hypervisors in SDN (Analysis)
+Problem 3: Analyze the roles and interaction of virtual switches and hypervisors in an SDN context within a virtualized data center environment. Explain how they collectively form part of the SDN data plane and how the SDN controller interacts with them.
+
+---
+
+### Answer
+
+In a modern virtual data center, servers run multiple Virtual Machines (VMs) on a single physical host. The hypervisor and virtual switch work together right inside that server to manage network traffic for these VMs.
+
+* **Role of the Hypervisor:**
+* **Runs the VMs:** It creates, runs, and isolates multiple virtual machines on the same physical machine.
+* **Provides Virtual NICs (vNICs):** It gives each VM its own virtual network card so the VM thinks it has real physical cables plugged into it.
+* **Connects to the Switch:** It passes packets directly between the VM's virtual network card and the virtual switch.
+
+
+* **Role of the Virtual Switch (vSwitch):**
+* **Software Switch on the Host:** It is a program (like Open vSwitch or OVS) running inside the hypervisor.
+* **Connects VMs Locally:** It lets VMs on the same physical server talk to each other directly through RAM, without sending packets out to a physical cable.
+* **Connects VMs to the Outside World:** It bridges the VMs to the physical network card (NIC) so traffic can leave the server.
+* **Applies Flow Rules:** It checks packet headers and decides whether to forward, drop, or change tags on packets right as they leave the VM.
+
+
+* **How They Collectively Form Part of the SDN Data Plane:**
+* In a traditional network, the data plane only exists inside physical hardware switches in server racks.
+* In an SDN-based virtual data center, the data plane extends directly into the servers.
+* The hypervisor brings the traffic to the virtual switch, and the virtual switch acts as the very first and very last switch in the network path.
+* Together, they handle the pure packet-moving work (the data plane) at the software edge, enforcing network isolation, VLANs, and VXLAN tunnels before traffic ever hits a physical wire.
+
+
+* **How the SDN Controller Interacts with Them:**
+* **Pushing Forwarding Rules (OpenFlow):** The centralized SDN controller connects to the virtual switch using a protocol like OpenFlow. It installs flow rules into the virtual switch to tell it where to send traffic for specific VMs.
+* **Managing Configurations (OVSDB / NETCONF):** The controller uses management protocols (like OVSDB) to configure the virtual switch itself—such as creating new virtual ports when a VM turns on, setting up VXLAN tunnels, or configuring rate limits.
+* **Handling Unknown Traffic (Packet-In):** When a VM sends a packet that the virtual switch doesn't recognize, the virtual switch forwards the packet up to the SDN controller. The controller decides what to do, pushes down a new rule, and tells the switch where to send it.

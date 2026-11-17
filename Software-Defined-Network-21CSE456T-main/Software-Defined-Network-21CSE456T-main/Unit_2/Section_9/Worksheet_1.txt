@@ -1,0 +1,59 @@
+SDN Worksheet Unit 2 Section 9
+### Question
+
+Scenario: A network developer is using POX to implement a simple learning switch application.
+Question: Describe the fundamental logic that the POX controller would execute upon receiving an OFP_PACKET_IN message from a switch for an unknown destination MAC address, to learn the MAC address and forward the packet.
+
+---
+
+### Answer
+
+In a standard POX learning switch module (such as `l2_learning`), the controller emulates the behavior of an IEEE 802.1D transparent learning bridge.
+
+When an `OFP_PACKET_IN` event is triggered for a packet whose destination MAC address has not yet been learned, the POX controller executes the following fundamental logic:
+
+* **Event Handling and Header Parsing:**
+* The POX controller intercepts the incoming `PacketIn` event (`Event.ofp_packet_in`).
+* It extracts key packet metadata and header fields, specifically:
+* The switch identifier (`event.dpid` or connection object).
+* The ingress port on which the frame arrived (`event.port`).
+* The parsed Ethernet packet structure (`event.parsed`), identifying the source MAC address (`packet.src`) and destination MAC address (`packet.dst`).
+
+
+
+
+* **Source Address Learning (MAC-to-Port Table Update):**
+* The controller references its internal MAC-to-port mapping table (typically implemented as a Python dictionary associated with the switch connection, e.g., `mac_to_port[event.dpid]`).
+* It records or refreshes the association between the packet's source MAC address and its arrival port:
+```python
+self.mac_to_port[packet.src] = event.port
+
+```
+
+
+* This ensures that any future packets destined for `packet.src` will know exactly which switch port to egress through.
+
+
+* **Destination Lookup Evaluation:**
+* The controller checks the mapping table for the packet's destination MAC address (`packet.dst`).
+* Because the destination MAC address is **unknown** (i.e., `packet.dst not in self.mac_to_port` or is a broadcast address), the controller cannot determine a specific unicast egress port.
+
+
+* **Flooding Decision and Packet-Out Construction:**
+* Since the destination port is unknown, the controller must flood the packet across all switch ports to ensure it reaches the destination host.
+* It constructs an OpenFlow Packet-Out message (`ofp_packet_out`):
+* It adds an output action targeted to the flood port:
+```python
+action = of.ofp_action_output(port=of.OFPP_FLOOD)
+
+```
+
+
+* It references the packet data—either passing the switch's buffer ID (`event.ofp.buffer_id`) if the packet was buffered on the switch, or attaching the raw packet payload (`event.ofp.data`) if unbuffered.
+
+
+
+
+* **Sending the Message (Without Flow Rule Installation):**
+* The controller transmits the `ofp_packet_out` message to the switch via `event.connection.send(msg)`.
+* **Crucial Rule:** The controller does **not** install a flow rule (`ofp_flow_mod`) on the switch at this stage. Flow rules are only installed when the destination MAC address is already known; installing a rule for an unknown or flooded destination would cause all subsequent traffic to flood at line rate in hardware, defeating the learning switch design.

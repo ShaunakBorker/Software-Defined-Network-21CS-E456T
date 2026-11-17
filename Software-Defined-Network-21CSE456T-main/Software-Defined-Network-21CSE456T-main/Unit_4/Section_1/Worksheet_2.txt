@@ -1,0 +1,67 @@
+SDN Worksheet Unit 4 Section 1
+### Case Study – 2 (SLO-2): Applying SDN Architecture and Benefits in Data Centers
+
+---
+
+### a) Description of the SDN-Based Data Center Architecture
+
+To handle multi-tenancy, big-data analytics, and massive east-west (server-to-server) traffic, the data center adopts a modern SDN architecture structured across three decoupled planes, running on top of a Leaf-Spine physical fabric:
+
+* **Physical Underlay Fabric (Spine-and-Leaf Topology):**
+* **Leaf Switches (Top-of-Rack / ToR):** Every server rack connects directly to a Leaf switch.
+* **Spine Switches:** Connect all Leaf switches to form a high-bandwidth, non-blocking fabric.
+* **Predictable East-West Latency:** Any server can communicate with any other server across the data center in exactly two hops (Server $\rightarrow$ Leaf $\rightarrow$ Spine $\rightarrow$ Leaf $\rightarrow$ Server), eliminating bottlenecks caused by traditional three-tier tree designs.
+
+
+* **Data Plane (Infrastructure Layer):**
+* **White-Box / OpenFlow Switches:** Physical switches stripped of complex proprietary firmware; they act purely as fast packet forwarders by executing instructions stored in their hardware flow tables.
+* **Virtual Switches (vSwitches inside Hypervisors):** Software switches (like Open vSwitch / OVS) running inside compute servers to handle traffic between virtual machines (VMs) or containers before packets hit physical ports.
+* **Overlay Encapsulation (VXLAN / Geneve):** The data plane encapsulates tenant traffic into overlay tunnels, allowing millions of isolated virtual subnets to run over a single shared IP underlay.
+
+
+* **Control Plane (Centralized SDN Controller Cluster):**
+* **The Network "Brain":** A high-availability cluster (such as ONOS or OpenDaylight) that maintains a real-time, global view of the entire fabric topology, link states, and server locations.
+* **Southbound Interfaces (OpenFlow, P4Runtime, OVSDB):** Used by the controller to push flow forwarding rules, create tunnels, and manage ports on both physical switches and virtual hypervisor switches.
+* **Multi-Tenant State Management:** Tracks tenant assignments, access control lists (ACLs), and isolation tags to guarantee traffic separation.
+
+
+* **Application / Management Plane:**
+* **Cloud Management Platform (e.g., OpenStack / Kubernetes):** Interacts with the SDN controller via Northbound REST APIs to automatically request network resources when tenants spin up new compute nodes or clusters.
+* **Big-Data Traffic Engineering & Monitoring Apps:** Custom software applications that observe traffic distribution and instruct the controller to optimize paths for large data transfers (e.g., Hadoop/Spark jobs).
+
+
+
+---
+
+### b) How SDN Improves Performance and Cost Efficiency
+
+* **Performance Improvements:**
+* **Optimal East-West Traffic Handling (Multipathing):**
+* Traditional Spanning Tree Protocol (STP) shuts down redundant links to prevent loops, wasting up to 50% of available bandwidth.
+* SDN actively uses all available paths simultaneously using Equal-Cost Multi-Pathing (ECMP) and dynamic flow steering, maximizing throughput for heavy server-to-server big-data jobs.
+
+
+* **Dynamic Congestion Avoidance:**
+* When large analytic queries create high-bandwidth "elephant flows" that threaten to saturate a link, the SDN controller detects the spike in real time and dynamically shifts standard web traffic or smaller "mice flows" to alternate uncongested links.
+
+
+* **Hardware-Enforced Multi-Tenant Isolation:**
+* Traffic from different tenants is tagged and routed in separate virtual overlay networks (like VXLAN) directly in switch hardware.
+* Each tenant gets dedicated QoS queues and rate limiters, preventing "noisy neighbor" problems where one tenant's heavy workload degrades performance for others.
+
+
+
+
+* **Cost Efficiency Improvements:**
+* **Lower Hardware Costs (Reduced CapEx):**
+* The provider replaces expensive, proprietary brand-name switches with low-cost commodity "white-box" switches running open networking standards.
+* All advanced routing intelligence moves into software, eliminating vendor hardware lock-in and high licensing markups.
+
+
+* **Reduced Operational Expenses (Lower OpEx):**
+* Network configuration is automated end-to-end through software APIs.
+* Provisioning a new tenant or re-routing traffic no longer requires engineers to manually log into dozens of switches, cutting down labor hours and costly manual misconfigurations.
+
+
+* **Maximizing Existing Infrastructure Utilization:**
+* By actively load-balancing traffic across every physical cable and port instead of blocking links with STP, the provider squeezes near 100% capacity out of its existing physical network before needing to buy more hardware.

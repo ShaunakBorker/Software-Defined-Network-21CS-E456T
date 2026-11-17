@@ -1,0 +1,41 @@
+SDN Worksheet Unit 3 Section 5
+### Question
+
+5. Flow Rule Modifications using NetApp (Evaluation)
+Problem 5: An enterprise has deployed an SDN network and is using a NetApp to implement a dynamic load-balancing service for its web servers. This NetApp constantly monitors the CPU load of backend web servers and the network latency to them.
+Scenario: One of the web servers (Server A) suddenly experiences a high CPU load and increased network latency, indicating it's overloaded.
+Question: Evaluate how the load-balancing NetApp would likely modify flow rules on the SDN switches to adapt to this scenario. Discuss the expected impact on traffic distribution and overall service performance.
+
+---
+
+### Answer
+
+* **How the NetApp Modifies Flow Rules on the Switches:**
+* **Detects the Problem:** The NetApp continuously checks server CPU usage and response delay. It notices that Server A is overloaded while other servers (Server B, Server C) have spare capacity.
+* **Updates Group Tables (Proactive Balancing):**
+* If the switches use OpenFlow `SELECT` group tables to distribute incoming connections, the NetApp changes the "weights" of the action buckets.
+* It sends a group modification command (`OFPT_GROUP_MOD`) to drastically lower the weight of Server A (or set it to zero) and increase the weights of Server B and Server C.
+* As a result, the switch automatically hashes new incoming client sessions toward the healthy servers instead of Server A.
+
+
+* **Installs Specific Path/Destination Rules (Reactive Balancing):**
+* The NetApp pushes new flow modification messages (`OFPT_FLOW_MOD`) for new web traffic (matching TCP port 80/443).
+* It changes the destination IP/MAC rewrite actions to point to Server B or Server C, steering new requests away from Server A.
+
+
+* **Protects Existing Connections (Graceful Handling):**
+* To avoid breaking active user downloads or active logins already running on Server A, existing flow rules for established sessions are left untouched until they finish or time out (`idle_timeout`). Only *new* incoming connection flows are redirected.
+
+
+
+
+* **Impact on Traffic Distribution:**
+* **Traffic Steered to Healthy Servers:** New user requests are immediately diverted away from Server A and spread evenly across Server B and Server C.
+* **Load Relieved from Server A:** Incoming network requests to Server A drop sharply, allowing its CPU queue to drain and its latency to recover.
+* **Dynamic Rebalancing:** Once the NetApp sees Server A's CPU usage return to normal levels, it can restore Server A's bucket weight in the group table to resume normal traffic sharing.
+
+
+* **Impact on Overall Service Performance:**
+* **Prevents Server Crash / Downtime:** It stops Server A from running completely out of memory or dropping packets, avoiding service outages.
+* **Lower Response Times for Users:** Users connecting to the web service get fast responses from the uncongested servers rather than experiencing spinning wheels, timeouts, or 504 Gateway errors.
+* **Zero Hardware Reconfiguration:** The entire balancing adjustment happens in milliseconds in software across the switches, without needing manual intervention from a network administrator.

@@ -1,0 +1,30 @@
+SDN Worksheet Unit 2 Section 6
+### Question
+
+Scenario: An SDN architect is evaluating different controllers for a brownfield deployment. They are particularly interested in a controller that has a strong community, is Python-based, and is good for learning and prototyping.
+Question: Which two controllers from the list (NOX/POX, Treama, RYU, Floodlight) would best fit these criteria, and why?
+
+---
+
+### Answer
+
+The two controllers that best fit these criteria are **POX** (from NOX/POX) and **Ryu**.
+
+* **Why POX and Ryu Fit the Criteria:**
+* **Exclusively Python-Based:** Both POX and Ryu are native Python frameworks, allowing developers and network engineers to write SDN applications, flow handlers, and packet parsing logic directly in Python without compilation overhead.
+* **Ideal for Learning and Prototyping:**
+* **POX** was created specifically as an educational and research-oriented controller. It comes bundled natively with Mininet distributions, requires zero complex setup, and provides straightforward abstractions for learning fundamental OpenFlow concepts (like reactive hub/switch implementations).
+* **Ryu** offers clean, modular Python abstractions with an event-driven model that makes rapid prototyping effortless, while also supporting production-grade features.
+
+
+* **Community and Protocol Support:**
+* **Ryu** maintains a very active, established open-source community (originally backed by NTT) with extensive documentation, tutorials, and comprehensive support for all OpenFlow versions (v1.0 through v1.5), NETCONF, and OF-CONFIG.
+* **POX** has long served as the de facto academic standard for introductory SDN lab coursework, university curricula, and prototype testing.
+
+
+
+
+* **Why the Other Controllers Do Not Fit:**
+* **Floodlight:** While enterprise-grade and supported by an active community, Floodlight is written entirely in **Java**, which directly disqualifies it from the Python-based requirement.
+* **Trema (Treama):** Developed primarily in **C and Ruby** (not Python), and its community ecosystem has largely become inactive compared to Python-based alternatives.
+* **NOX:** While historically significant as the first OpenFlow controller, NOX was written primarily in **C++** (with deprecated Python bindings) and was superseded by POX specifically to meet Python educational and prototyping needs.

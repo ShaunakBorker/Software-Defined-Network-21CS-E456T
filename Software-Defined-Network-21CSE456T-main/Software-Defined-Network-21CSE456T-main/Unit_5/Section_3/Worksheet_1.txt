@@ -1,0 +1,136 @@
+SDN Worksheet Unit 5 Section 3
+OpenDaylight (ODL) natively supports multi-protocol southbound management through its **Model-Driven Service Abstraction Layer (MD-SAL)**. Because MD-SAL models all network devices and state as YANG data structures, ODL can manage traditional routers via NETCONF/YANG alongside OpenFlow switches without replacing the controller platform or altering higher-level application logic.
+
+---
+
+### Integration Architecture Overview
+
+```
++-------------------------------------------------------------+
+|               Application / Orchestration Layer             |
+|          (RESTCONF APIs / Dynamic Routing Applications)      |
++------------------------------+------------------------------+
+                               |
++------------------------------v------------------------------+
+|             OpenDaylight MD-SAL (Data Broker)               |
+|      [ Config Datastore ]       [ Operational Datastore ]   |
++------------------------------+------------------------------+
+                               |
+       +-----------------------+-----------------------+
+       | Southbound Plugin                             | Southbound Plugin
+       v                                               v
++-------------------------------+             +-------------------------------+
+|    OpenFlow Plugin (Existing) |             |     NETCONF Connector Plugin  |
++---------------+---------------+             +---------------+---------------+
+                | OpenFlow                                    | NETCONF over SSH
+                v                                             v
+     [ OpenFlow Switches ]                        [ Legacy Routers (YANG) ]
+
+```
+
+---
+
+### Step-by-Step Integration Plan
+
+#### Phase 1: Controller Feature Activation & Environment Preparation
+
+1. **Enable the ODL NETCONF Southbound Features:**
+* In the running ODL Karaf container, install the essential NETCONF and RESTCONF bundles:
+```bash
+feature:install odl-netconf-connector-all odl-restconf odl-mdsal-apidocs
+
+```
+
+
+* This spins up the NETCONF southbound dispatcher, the SSH communication engine, and the dynamic schema cache.
+
+
+2. **Collect Device YANG Data Models:**
+* Gather the device-specific YANG models (vendor-specific modules or standard IETF/OpenConfig models like `ietf-interfaces`, `ietf-routing`, or `openconfig-interfaces`) supported by the legacy router firmware.
+
+
+
+#### Phase 2: Router Configuration (Device Preparation)
+
+1. **Enable NETCONF Subsystem over SSH on Legacy Routers:**
+* Configure the routers to listen for NETCONF connections (typically on TCP port `830`).
+* *Example (Cisco IOS-XE / Juniper Junos):*
+```text
+! Cisco IOS-XE
+netconf-yang
+netconf-yang feature candidate-datastore
+
+# Juniper Junos
+set system services netconf ssh
+
+```
+
+
+
+
+2. **Provision Dedicated Management Credentials:**
+* Create an administrative user with SSH key or strong password credentials dedicated to the ODL controller.
+
+
+
+#### Phase 3: Onboarding & Mounting Routers to the MD-SAL
+
+1. **Submit a Mount Request via RESTCONF:**
+* Instruct ODL to establish an active NETCONF management session with each legacy router by sending an HTTP `POST` or `PUT` request to ODL’s RESTCONF interface:
+* **Endpoint:**
+`http://<ODL_IP>:8181/rests/data/network-topology:network-topology/topology=topology-netconf/node=<ROUTER_NODE_ID>`
+* **Payload (XML/JSON):**
+```xml
+<node xmlns="urn:TBD:params:xml:ns:yang:network-topology">
+  <node-id>router-core-01</node-id>
+  <host xmlns="urn:opendaylight:netconf-node-topology">192.168.10.25</host>
+  <port xmlns="urn:opendaylight:netconf-node-topology">830</port>
+  <username xmlns="urn:opendaylight:netconf-node-topology">odl_admin</username>
+  <password xmlns="urn:opendaylight:netconf-node-topology">SecretPassword123</password>
+  <tcp-only xmlns="urn:opendaylight:netconf-node-topology">false</tcp-only>
+  <keepalive-delay xmlns="urn:opendaylight:netconf-node-topology">120</keepalive-delay>
+</node>
+
+```
+
+
+
+
+2. **Dynamic Capability & Schema Discovery:**
+* ODL initiates the SSH handshake and exchanges the standard `<hello>` message with the router to discover its supported YANG capabilities.
+* ODL automatically downloads the router's active YANG schemas via the NETCONF `<get-schema>` RPC and builds an in-memory schema context inside the MD-SAL cache.
+
+
+
+#### Phase 4: Verification in MD-SAL Datastores
+
+1. **Check Operational Status:**
+* Query the Operational Datastore via RESTCONF:
+`GET /rests/data/network-topology:network-topology/topology=topology-netconf/node=router-core-01`
+* Confirm that the `connection-status` field reports `connected`.
+
+
+2. **Access Device State:**
+* Once connected, ODL exposes the router’s real-time interface counters, routing tables, and hardware inventory directly in its operational data tree.
+
+
+
+#### Phase 5: Policy Enforcement and Service Automation
+
+1. **Push Configuration via the Config Datastore:**
+* To update routing policies, access lists, or IP interfaces on the legacy router, the startup sends RESTCONF requests to ODL's Configuration Datastore.
+* MD-SAL translates the inbound JSON/XML into an internal DOM structure, serializes it into a standard NETCONF `<edit-config>` RPC, and sends it down to the router.
+
+
+2. **Support Two-Phase Commits:**
+* For routers that support candidate datastores, ODL executes `<lock>`, `<edit-config>`, `<validate>`, and `<commit>`, rolling back automatically if validation fails.
+
+
+
+---
+
+### Operational Best Practices
+
+* **Schema Cache Optimization:** Store common standard YANG models locally in ODL's `cache/schema` directory to prevent every router from uploading identical multi-megabyte schemas over the WAN on boot.
+* **Keepalive Tuning:** Maintain an active `keepalive-delay` (e.g., 60–120 seconds) in the mount payload so the controller detects dropped management links and triggers automatic re-connection.
+* **Unified Abstraction Layer:** Use open standard YANG models (e.g., **OpenConfig**) across both legacy routers and OpenFlow translators to allow higher-level applications to configure forwarding paths uniformly across the hybrid fabric.

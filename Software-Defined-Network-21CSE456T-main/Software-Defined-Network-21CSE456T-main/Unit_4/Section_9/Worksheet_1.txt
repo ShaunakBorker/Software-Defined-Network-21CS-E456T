@@ -1,0 +1,87 @@
+SDN Worksheet Unit 4 Section 9
+### Case Study – 1 (SLO-1): Understanding ONOS Architecture and Capabilities
+
+---
+
+### a) Why ONOS is Suitable for Carrier-Grade Networks
+
+ONOS (Open Network Operating System) was designed from the ground up to satisfy the stringent requirements of telecommunication service providers (the "five nines" or 99.999% reliability standard), making it well-suited for large-scale backbone and 5G networks:
+
+* **Distributed Clustered Architecture (High Availability & Fault Tolerance):**
+* Unlike single-instance controllers, ONOS operates as a synchronized, multi-node cluster.
+* Using distributed consensus algorithms (via **Atomix / Raft**), the cluster mirrors network state across all nodes.
+* If an individual controller instance fails or loses power, another node automatically takes over the affected switches and flows in milliseconds without service interruption or state loss.
+
+
+* **Horizontal Scalability:**
+* Network operators can scale capacity by adding more ONOS server nodes to the cluster.
+* Workloads (switches, ports, and flow management) are partitioned dynamically across cluster nodes, enabling the controller to oversee hundreds of thousands of switches and millions of flows without hitting performance bottlenecks.
+
+
+* **Dynamic Intent Framework (Policy-Based Automation):**
+* Network operators specify what they want to achieve (e.g., *"connect Point A to Point B with 10 Gbps and low latency"*) via high-level intents rather than handcrafting individual flow rules for every switch.
+* ONOS compiles, installs, and actively monitors these intents. If a fiber link breaks along the path, the Intent Framework automatically recalculates and reroutes traffic around the failure without operator intervention.
+
+
+* **Carrier-Grade Modularity (OSGi Framework):**
+* Built on an OSGi container (Apache Karaf), every protocol, service, and application inside ONOS is an independent software bundle.
+* Network engineers can activate, update, debug, or deactivate features and drivers on live production clusters with zero network downtime.
+
+
+* **Multi-Vendor and Multi-Protocol Southbound Support:**
+* Telecom backbones feature a mix of legacy and modern hardware.
+* ONOS decouples the core logic from device-specific protocols through pluggable provider drivers, supporting **OpenFlow, P4Runtime, NETCONF, RESTCONF, OVSDB, and gNMI/gNOI** simultaneously.
+
+
+
+---
+
+### b) Main Architectural Layers of ONOS
+
+ONOS is structured into three primary architectural tiers, linked by standardized Northbound and Southbound abstractions:
+
+```
++-------------------------------------------------------------+
+|                  Application Layer (NetApps)                |
+|   [ Traffic Engineering ]  [ Segment Routing ]  [ Web GUI ] |
++------------------------------+------------------------------+
+                               | Northbound Abstractions (Intent / REST)
++------------------------------v------------------------------+
+|                     ONOS Distributed Core                   |
+|   [ Distributed Store ] [ Intent Framework ] [ Topology ]   |
+|   [ Device / Host Mgr ] [ Flow Objective   ] [ Event Engine]|
++------------------------------+------------------------------+
+                               | Southbound Abstraction Layer (SPI)
++------------------------------v------------------------------+
+|                Providers & Protocol Drivers Layer           |
+|   [ OpenFlow ]  [ P4Runtime ]  [ NETCONF ]  [ gNMI/OVSDB ]  |
++------------------------------+------------------------------+
+                               | Southbound Control Protocols
++------------------------------v------------------------------+
+|            Physical / Virtual Network Infrastructure        |
+|      (White-box Switches, Optical ROADMs, vSwitches)        |
++-------------------------------------------------------------+
+
+```
+
+* **1. Application Layer (NetApps):**
+* **Role:** Hosts operator-level business logic, network management applications, and orchestration interfaces.
+* **Examples:** Segment Routing (SR-Fabric), reactive/proactive forwarding, dynamic DDoS mitigation, optical network controllers, and cloud management plugins (OpenStack Neutron, Kubernetes CNI).
+* **Interface:** Communicates with the core via **Northbound APIs** (high-level Intent Framework APIs, REST/RESTCONF, and CLI tools).
+
+
+* **2. The Distributed Core Engine (The "Brain"):**
+* **Role:** Manages the global state of the network, enforces policies, and maintains continuous consistency across the controller cluster.
+* **Key Core Subsystems:**
+* **Distributed Store & Cluster Manager:** Replicates network state across controller nodes using strong or eventual consistency models depending on data criticality.
+* **Topology & Graph Service:** Maintains a live map of all switches, active links, and connected endpoints.
+* **Intent Framework:** Compiles high-level policy intents into concrete, executable flow objectives.
+* **Flow Objective Subsystem:** Translates routing logic into hardware-agnostic table operations (Filtering, Forwarding, Next) before sending them to device drivers.
+
+
+
+
+* **3. Southbound Providers and Drivers Layer:**
+* **Role:** The translation bridge connecting the ONOS core to diverse data-plane hardware.
+* **Provider Abstraction:** Exposes a unified Service Provider Interface (SPI) to the core, so the core sees devices uniformly regardless of vendor or model.
+* **Pluggable Protocol Drivers:** Contains the specific protocol plugins (OpenFlow, P4Runtime, NETCONF, gNMI) that encode commands into device-specific formats and decode device telemetry/alarms into ONOS core events.

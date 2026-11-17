@@ -1,0 +1,26 @@
+SDN Worksheet Unit 2 Section 5
+### Question
+
+Scenario: Two different ONOS instances are deployed in a distributed cluster for high availability and scalability. They need to share network state and coordinate control plane decisions.
+Question: Which ONOS interface facilitates this communication and synchronization between the ONOS instances?
+
+---
+
+### Answer
+
+The **East-West (or Eastbound/Westbound) Interface** facilitates this communication and synchronization between the ONOS instances.
+
+* **Role of the East-West Interface:**
+* In Software-Defined Networking, the East-West interface is responsible for horizontal communication between peer controller instances operating within the same cluster or across federated administrative domains.
+* It provides the transport and messaging framework needed to exchange topology data, flow state, host discovery information, and network events between multiple controller nodes.
+
+
+* **How Synchronization Operates in an ONOS Cluster:**
+* **Distributed Consensus and Data Stores:** ONOS relies on distributed consensus protocols (primarily the **Raft** consensus algorithm via components like Atomix) over its East-West channels to maintain strongly consistent distributed stores (e.g., leadership election, device mastership, and intent states).
+* **Eventually Consistent State Replication:** For high-throughput, latency-sensitive data (such as packet counters and flow statistics), ONOS leverages anti-entropy protocols and gossip algorithms across the East-West interface to achieve rapid, eventual consistency across the cluster.
+* **Mastership and Workload Coordination:** The instances coordinate via this interface to negotiate mastership roles for individual data plane switches (determining which node acts as the `MASTER` or `STANDBY` controller for each switch), guaranteeing uninterrupted failover and balanced computational load.
+
+
+* **Contrast with Northbound and Southbound Interfaces:**
+* **Northbound Interface:** Handles vertical communication upward to business logic, cloud orchestrators, and external REST client applications.
+* **Southbound Interface:** Handles vertical communication downward to the data plane switches and physical/virtual network elements (using protocols like OpenFlow, NETCONF, or P4Runtime).

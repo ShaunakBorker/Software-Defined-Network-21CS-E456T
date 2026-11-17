@@ -1,0 +1,29 @@
+### Question
+
+Scenario 12:
+You are running a Mininet simulation with a remote controller. You believe the controller is not correctly installing flow rules on switch s3. What command would you run in the main Linux terminal (not the Mininet CLI) to inspect the flow table of switch s3?
+
+---
+
+### Answer
+
+To inspect the OpenFlow flow table of switch `s3` directly from the main Linux host terminal, run the following Open vSwitch command:
+
+```bash
+sudo ovs-ofctl dump-flows s3
+
+```
+
+* **Command Explanation:**
+* `sudo`: Grants the necessary administrative privileges required to query Open vSwitch internal states and databases.
+* `ovs-ofctl`: The command-line management utility used to administer and inspect OpenFlow switches and flow tables.
+* `dump-flows`: The specific action instructing the utility to print all active flow entries, actions, matches, packet counters, and timeouts.
+* `s3`: The target switch name within the Mininet environment whose flow entries you wish to view.
+
+
+* **Optional Specifics:**
+* If your controller or switch is running a specific OpenFlow version (such as OpenFlow 1.3), append the protocol flag:
+```bash
+sudo ovs-ofctl -O OpenFlow13 dump-flows s3
+
+```

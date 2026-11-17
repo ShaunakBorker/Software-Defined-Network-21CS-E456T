@@ -1,0 +1,25 @@
+SDN Worksheet Unit 2 Section 7
+### Question
+
+Scenario: A network team is evaluating a new SDN solution. They emphasize the need for a controller that offers a high degree of programmatic control over network hardware, including fine-grained configuration of switch features beyond just OpenFlow (e.g., specific ASIC features).
+Question: While OpenFlow is central, which controller from the list (OpenFlow-related, Plexxi, Cisco ONEPK) might offer more proprietary or extended control capabilities over Cisco hardware specifically?
+
+---
+
+### Answer
+
+**Cisco onePK (Open Network Environment Platform Kit)** is the solution from the list that offers proprietary and deep extended control capabilities specifically over Cisco hardware.
+
+* **Direct Integration with Cisco Operating Systems:**
+* Unlike standard OpenFlow controllers that treat network elements as generic match-action forwarding tables, Cisco onePK provides an SDK and API layer built directly into Cisco’s proprietary operating systems (IOS, IOS-XE, and IOS-XR).
+* It grants applications native, deep access to internal system features, route tables (RIB/FIB), QoS queuing engines, and hardware ASICs.
+
+
+* **Fine-Grained Hardware and Feature Control:**
+* **ASIC and Hardware Inspection:** onePK allows developers to programmatically interact with low-level platform capabilities, packet-processing pipelines, and hardware hardware-accelerated features that OpenFlow's abstracted abstraction model does not expose.
+* **Full Data-Path and Policy Hooks:** It provides granular APIs for deep packet inspection, hardware interface monitoring, event handling, and custom policy routing directly on Cisco routers and switches.
+
+
+* **Contrast with the Alternatives:**
+* **Standard OpenFlow-related Controllers:** Adhere strictly to the open OpenFlow specification, abstracting away underlying vendor-specific ASIC features in favor of a normalized flow-table model.
+* **Plexxi:** Centered around its own proprietary affinity-driven networking and photonic/optical switching fabric, offering tailored control for Plexxi hardware rather than Cisco gear.

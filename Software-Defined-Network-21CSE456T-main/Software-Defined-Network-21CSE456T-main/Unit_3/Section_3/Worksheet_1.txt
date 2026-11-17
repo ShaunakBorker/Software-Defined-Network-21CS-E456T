@@ -1,0 +1,23 @@
+SDN Worksheet Unit 3 Section 3
+### Question
+
+3. SDN Architecture Planes (Understanding)
+Problem 3: Describe the three main planes (Data Plane, Control Plane, and Application/Management Plane) in a typical Software-Defined Networking (SDN) architecture. For each plane, briefly explain its primary role and provide an example of a component or function that resides within it.
+
+---
+
+### Answer
+
+* **Data Plane (Infrastructure Plane):**
+* **Primary Role:** The "muscle" of the network. It simply follows rules to forward, drop, or modify network packets as fast as possible. It does not make independent routing decisions.
+* **Example:** An OpenFlow-enabled switch (like a physical switch or virtual switch such as Open vSwitch), which contains flow tables that tell it which port to send incoming packets to.
+
+
+* **Control Plane:**
+* **Primary Role:** The "brain" of the network. It decides how traffic should flow, maintains a complete view of the entire network map, and tells the data plane switches what to do.
+* **Example:** An SDN Controller (such as OpenDaylight, ONOS, or Ryu), which calculates the best network paths and sends flow rules down to the switches.
+
+
+* **Application / Management Plane:**
+* **Primary Role:** The "user interface and logic" layer. It lets operators and programs state what they want the network to do (like blocking threats, balancing traffic, or checking performance) without dealing with low-level switch commands. It talks down to the control plane using Northbound APIs (like REST APIs).
+* **Example:** A firewall application, a load-balancing tool, or a network monitoring dashboard.

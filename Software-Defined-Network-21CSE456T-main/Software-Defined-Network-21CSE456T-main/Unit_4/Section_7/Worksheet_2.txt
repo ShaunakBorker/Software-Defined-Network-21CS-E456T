@@ -1,0 +1,62 @@
+SDN Worksheet Unit 4 Section 7
+### Case Study – 2 (SLO-2): Applying SDN for DDoS Attack Mitigation
+
+---
+
+### a) How SDN Detects a DDoS Attack
+
+The centralized intelligence and programmability of SDN allow the network to monitor traffic behaviors in real time across all switches simultaneously, rather than waiting for individual perimeter firewalls to notice an overload. Detection follows a multi-stage process:
+
+* **1. Continuous Streaming Telemetry & Flow Statistics:**
+* SDN switches maintain hardware counters for every active flow (tracking packet counts, byte counts, and flow durations).
+* A security monitoring NetApp running on the SDN controller continuously collects telemetry using lightweight protocols:
+* **Asynchronous Polling / Streaming:** In-band Network Telemetry (INT), sFlow, or IPFIX streaming statistics directly from switches.
+* **OpenFlow `FlowStats` Requests:** Periodic controller queries for active flow table statistics without burdening switch CPUs.
+
+
+
+
+* **2. Identification of Statistical Anomalies:**
+* During a volumetric or flooding DDoS attack (e.g., SYN flood, UDP amplification, ICMP flood), key network metrics deviate sharply from normal baselines:
+* **Surge in Table-Miss (`Packet-In`) Events:** Attackers using randomly spoofed IP addresses generate traffic with unknown destination headers, triggering a sudden spike in `Packet-In` messages sent to the controller.
+* **Asymmetric Flow Ratios:** A massive ratio of outbound TCP SYN packets without corresponding SYN-ACK/ACK responses (classic SYN flood behavior).
+* **Entropy Drops (Information Entropy Analysis):** Normal traffic features a healthy diversity of source/destination IP addresses and ports. A flood targeting a specific e-commerce checkout server shows a steep drop in destination IP/port entropy, signaling focused malicious intent.
+
+
+
+
+* **3. Machine Learning & Behavioral Classification:**
+* The SDN security application evaluates real-time flow features using classification algorithms (e.g., Random Forests, Support Vector Machines, or Deep Neural Networks).
+* The model separates legitimate seasonal flash-crowd shoppers (who complete full TCP handshakes and load various site assets) from botnet flood streams (which repeat fixed packet sizes, rapid-fire half-open connections, and spoofed subnets).
+
+
+
+---
+
+### b) Mitigation Actions Taken by the SDN Controller
+
+Once the attack signature, target IP/port, and malicious ingress points are identified, the SDN controller executes targeted, automated countermeasures directly on the switches in milliseconds:
+
+* **1. Line-Rate Ingress Dropping at the Network Edge:**
+* Instead of letting attack traffic enter the core network or hit the web servers, the SDN controller pushes high-priority `DROP` flow rules down to the **ingress/edge switches (Leaf/Top-of-Rack switches)** closest to the traffic entry point.
+* Packets matching the attack signature (specific source CIDR blocks, TCP flags, or malicious packet lengths) are discarded at wire speed directly in switch hardware (TCAM), preserving backbone bandwidth.
+
+
+* **2. Granular Rate-Limiting via Hardware Metering:**
+* For attacks that cannot be cleanly separated from valid user traffic without risk of false positives (e.g., HTTP flood attacks targeting checkout APIs), the controller configures **OpenFlow Meter Bands (`OFPMT_METER`)**.
+* The switch restricts traffic targeting that server port to a safe threshold (e.g., 5,000 packets per second), ensuring normal customers can still check out while absorbing the excess spike without crashing the application.
+
+
+* **3. Dynamic Traffic Steering to Scrubbing Centers (Service Chaining):**
+* The controller dynamically rewrites forwarding tables to steer suspicious or unverified flows to virtualized security middleboxes (like Deep Packet Inspection / DPI VNFs or Web Application Firewalls) for deep inspection.
+* Legitimate packets that pass authentication (e.g., completing a CAPTCHA or TCP SYN cookie challenge) are reinjected into the network, while malicious packets are discarded.
+
+
+* **4. Dynamic Redirection and Honeynet Containment:**
+* Using flow-action modifications (`set_field: ipv4_dst`), the controller can silently rewrite destination IP addresses on malicious packets, redirecting the botnet's traffic away from actual payment databases into an isolated sinkhole or honeypot server.
+* This neutralizes the attack against production infrastructure while logging attacker behaviors for forensic analysis.
+
+
+* **5. Protecting the SDN Control Plane Itself:**
+* To prevent the DDoS attack from overwhelming the controller via `Packet-In` floods, the controller activates local switch-level rate limiters on the OpenFlow channel.
+* Temporary wild-card drop rules are installed for unmatched flows on ingress ports, safeguarding controller CPU and memory so regular network management remains fully operational.

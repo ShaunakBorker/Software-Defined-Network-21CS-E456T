@@ -1,0 +1,64 @@
+SDN Worksheet Unit 5 Section 7
+### Potential Damage via Compromised Northbound API
+
+Because the Northbound API (REST/RESTCONF/Intent APIs) exposes direct, programmatic control over the entire network forwarding state, an attacker leveraging an authorized but compromised application possesses capabilities far beyond a compromised endpoint:
+
+* **Network-Wide Denial of Service (Blackholing & Purging):**
+* The attacker can issue global flow-table deletion commands (`DELETE /flows` or `OFPFC_DELETE`), clearing TCAM entries across all core, spine, and edge switches simultaneously.
+* They can push default `DROP` rules matching broad subnets (e.g., `0.0.0.0/0`), instantly disconnecting entire data centers, customer-facing services, and internal management channels.
+
+
+* **Traffic Hijacking and Eavesdropping (Man-in-the-Middle):**
+* By modifying flow match/action criteria or updating segment-routing labels, the attacker can silently duplicate and redirect sensitive unencrypted traffic (database replication, VoIP, internal API calls) to an external or compromised IP collector for exfiltration.
+* Forwarding paths can be altered to route traffic through rogue proxy nodes before reaching the legitimate destination.
+
+
+* **Security Policy Bypass and Microsegmentation Sabotage:**
+* In networks enforcing Zero Trust or distributed firewalling, the attacker can modify access-control intents, inserting high-priority wildcard `ALLOW` rules that expose sensitive zones (PCI-DSS databases, medical systems, active directory servers) to untrusted subnets.
+
+
+* **Control-Plane Exhaustion (Denial of the Controller):**
+* The attacker can spam rapid-fire, complex intent compilation requests or wildcard flow-mod commands, overwhelming the controller's CPU, exhausting its memory, and saturating the southbound control channel with flow updates.
+
+
+* **Intent and Topology Desynchronization:**
+* By poisoning intent states or injecting false topology abstraction data, the attacker can cause the controller to calculate loops, introduce high-latency paths, or trigger black-hole loops that resist standard automated recovery routines.
+
+
+
+---
+
+### Security Measures to Prevent and Mitigate Northbound Abuse
+
+Securing the Northbound interface requires shifting away from monolithic API keys or shared service credentials toward **defense-in-depth, least privilege, and runtime policy arbitration**:
+
+#### 1. Fine-Grained Role-Based Access Control (RBAC) & OAuth2/mTLS
+
+* **Mutual TLS (mTLS):** Enforce strict client-certificate validation for every application connecting to the Northbound interface, ensuring only authorized host binaries can communicate with the API.
+* **Granular Scopes via OAuth2 / JWT:**
+* Replace global administrative API keys with short-lived, cryptographically signed tokens bearing narrow permissions.
+* A monitoring application should possess strictly `read:telemetry` or `read:topology` scopes, completely barring it from executing write operations (`POST`, `PUT`, `DELETE` on flow tables or intents).
+
+
+
+#### 2. Northbound Policy Arbitrator & Intent Conflict Detection
+
+* Place an **Application Policy Arbitrator (e.g., PermOF / FlowSec)** between northbound applications and the controller core:
+* **Invariant Checking:** Every submitted API request must be evaluated against global corporate invariants (e.g., *"No application can install a rule with dst=0.0.0.0/0 with action=DROP"*, or *"Application X cannot touch Table 0"*).
+* **Conflict Analysis:** Detects when an application attempts to overwrite or contradict flow rules installed by higher-priority security applications.
+
+
+
+#### 3. Formal Verification Pre-Commit Gate (Digital Twin / Simulation)
+
+* Route all policy updates through a continuous verification engine (e.g., Batfish, Hassel/HSA) before committing them to the live network:
+* The engine verifies whether the proposed API call causes reachability leaks, routing loops, or black holes.
+* If the submitted change violates reachability invariants (e.g., exposing an internal database subnet), the commit fails automatically, and the API returns an authorization violation error.
+
+
+
+#### 4. API Rate-Limiting, Anomaly Detection & Immutable Audit Logging
+
+* **Rate Limiting & Quotas:** Implement an API Gateway (e.g., Kong, Envoy) in front of the SDN controller to throttle flow installation bursts, preventing control-plane DoS attacks.
+* **Behavioral Anomaly Monitoring:** Flag anomalous behavior—such as an application suddenly issuing bulk deletion requests outside maintenance windows or from an unusual IP address.
+* **Tamper-Proof Audit Trails:** Stream all API requests, bearer identities, source IPs, and payload bodies to an immutable SIEM system (e.g., write-once storage) to ensure forensic accountability and immediately trigger automated SOC alerts upon anomalous administrative actions.

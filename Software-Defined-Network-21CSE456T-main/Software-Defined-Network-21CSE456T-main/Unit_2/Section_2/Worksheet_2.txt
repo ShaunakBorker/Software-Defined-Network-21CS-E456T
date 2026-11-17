@@ -1,0 +1,34 @@
+SDN Worksheet Unit 2 Section 2
+### Question
+
+Scenario: A network engineer has implemented a custom topology in Mininet and wants to run a simple ping test between two hosts to verify basic connectivity, controlled by a Floodlight controller.
+Question: After starting Mininet with the Floodlight controller, what would be the expected OpenFlow interaction (message types) between the hosts, switches, and the controller for the first ping packet from h1 to h2?
+
+---
+
+### Answer
+
+Because switches start with empty flow tables and neither host knows the other's MAC address, the very first ping command (`ping -c 1 h2` from `h1`) triggers an Address Resolution Protocol (ARP) exchange followed by the actual ICMP Echo exchange.
+
+The sequence of expected OpenFlow interactions and message types proceeds in two primary phases:
+
+* **Phase 1: ARP Resolution Exchange (Resolving h2's MAC Address)**
+* **ARP Request Ingress & Table-Miss:** Host `h1` broadcasts an ARP Request (`Who has IP_h2? Tell IP_h1`). The connected switch receives the packet, checks its flow table, finds no matching entry, and buffers/encapsulates the frame.
+* **Switch to Controller (`OFPT_PACKET_IN`):** The switch sends an `OFPT_PACKET_IN` message encapsulating the ARP Request to the Floodlight controller, reporting the arrival on the ingress port.
+* **Learning and Forwarding Decision:** Floodlight’s learning switch module records `h1`'s MAC address and port binding. Because the destination is an ARP broadcast (`ff:ff:ff:ff:ff:ff`), the controller decides to flood the packet.
+* **Controller to Switch (`OFPT_PACKET_OUT`):** Floodlight sends an `OFPT_PACKET_OUT` message instructing the switch to output the packet out all ports except the ingress port (action: `OFPP_FLOOD`), delivering the ARP Request to host `h2`.
+* **ARP Reply Ingress & Table-Miss:** Host `h2` generates a unicast ARP Reply containing its MAC address targeted to `h1`. The switch receives this frame and, having no flow rule installed yet, triggers a second table-miss.
+* **Switch to Controller (`OFPT_PACKET_IN`):** The switch sends another `OFPT_PACKET_IN` message with `h2`'s ARP Reply to Floodlight.
+* **Flow Installation and Delivery (`OFPT_FLOW_MOD` & `OFPT_PACKET_OUT`):** Floodlight learns `h2`'s location. The controller then sends:
+* An `OFPT_FLOW_MOD` command to install a flow rule matching traffic destined for `h1`'s MAC address with an action to output to `h1`'s port.
+* An `OFPT_PACKET_OUT` command to forward the buffered ARP Reply directly to `h1`.
+
+
+
+
+* **Phase 2: ICMP Echo (Ping) Exchange**
+* **ICMP Echo Request Ingress & Table-Miss:** Having received the ARP reply, `h1` generates the IP/ICMP Echo Request packet directed to `h2`'s IP and MAC address. When this frame hits the switch, there is still no flow rule installed for destination `h2`.
+* **Switch to Controller (`OFPT_PACKET_IN`):** The switch encapsulates the ICMP Echo Request into an `OFPT_PACKET_IN` message and forwards it to Floodlight.
+* **Flow Installation for Forward Path (`OFPT_FLOW_MOD`):** Floodlight recognizes the destination MAC (`h2`) from Phase 1, computes the path, and issues an `OFPT_FLOW_MOD` message to install a bidirectional or forward flow rule matching packets addressed to `h2` with the action set to output out `h2`'s port.
+* **Forwarding Buffered Packet (`OFPT_PACKET_OUT`):** Simultaneously, Floodlight sends an `OFPT_PACKET_OUT` message directing the switch to transmit the initial buffered ICMP Echo Request to `h2`.
+* **ICMP Echo Reply Delivery (Hardware Forwarding):** Host `h2` generates an ICMP Echo Reply targeted at `h1`. Because the reverse flow rule matching destination `h1` was already installed during Phase 1, the switch forwards the reply packet directly to `h1` in the data plane at wire speed—without generating another `OFPT_PACKET_IN` message to Floodlight.

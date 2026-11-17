@@ -1,0 +1,50 @@
+SDN Worksheet Unit 1 Section 9
+### Question
+
+Scenario 18:
+A corporate network uses SDN. A new employee connects their laptop to the network for the first time. The network has a policy that all new devices must first be redirected to a registration portal. Describe the reactive flow installation process that enforces this policy.
+
+---
+
+### Answer
+
+In a reactive flow installation model, switches do not possess pre-configured forwarding rules for unknown devices. Instead, flow rules are generated on-demand when the first packet of a new flow triggers an interaction with the SDN controller.
+
+The step-by-step process operates as follows:
+
+* **Initial Connection and Table-Miss:**
+* The employee connects their laptop to an edge access switch port.
+* The laptop initiates a network request (such as an ARP broadcast, DHCP discovery, or an outbound HTTP web request).
+* The edge switch searches its OpenFlow flow tables for matching entries. Because the laptop's MAC/IP address is brand-new, no flow match exists, triggering a **Table-Miss**.
+
+
+* **Packet-In to Controller:**
+* By default, the switch's table-miss entry instructs it to buffer the packet (or encapsulate it) and generate an OpenFlow `OFPT_PACKET_IN` message.
+* The switch sends this message over the southbound control channel to the centralized SDN controller, passing along the ingress port, MAC address, and IP/TCP packet headers.
+
+
+* **Policy Lookup and Authentication Check:**
+* An authentication or Network Access Control (NAC) application running on the controller intercepts the packet.
+* The controller checks its registered device database and recognizes that the laptop’s MAC address has not yet been registered or authenticated.
+* In accordance with corporate policy, the controller determines that the traffic must be restricted and redirected to the internal registration portal.
+
+
+* **Flow-Mod Generation and Installation:**
+* The controller generates an OpenFlow `OFPT_FLOW_MOD` (Flow Modification) message and sends it back to the edge switch.
+* This message installs high-priority, temporary flow rules with specific match-action conditions:
+* **DNS/DHCP Traffic:** Allowed through so the client can resolve hostnames and obtain network addressing.
+* **HTTP/HTTPS Traffic:** Incoming web requests from the laptop (TCP destination port 80/443) have their destination IP/port rewritten (Network Address Translation / HTTP redirection) to point to the IP address of the registration captive portal server.
+* **General Corporate/Internet Traffic:** All other destinations and protocols (e.g., SSH, internal corporate subnets) are dropped.
+* **Timeouts:** An idle timeout or hard timeout is attached so the quarantine rule automatically expires or requires renewal.
+
+
+
+
+* **Packet-Out and User Redirection:**
+* Alongside the flow rule, the controller issues an `OFPT_PACKET_OUT` command directing the switch to process the buffered initial packet according to the newly installed redirection rule.
+* When the employee opens a web browser, they are automatically displayed the corporate registration portal where they submit credentials.
+
+
+* **Post-Registration Rule Update:**
+* Once registration/authentication is successful, the portal notifies the controller application.
+* The controller pushes a new `FLOW_MOD` command to delete the redirection flows and install standard forwarding rules, granting the laptop full authorized network access.

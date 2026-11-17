@@ -1,0 +1,58 @@
+SDN Worksheet Unit 4 Section 8
+### Case Study – 1 (SLO-1): Understanding Network Slicing in 5G Using SDN
+
+---
+
+### a) Concept of Network Slicing in 5G Using SDN
+
+* **Core Definition:**
+* Network slicing is the creation of multiple independent, isolated virtual networks (called **"slices"**) on top of a single, shared physical telecommunications infrastructure.
+* Rather than constructing distinct, costly physical networks for every application, a single pool of radio towers, fiber links, and data center servers is divided logically to serve fundamentally different use cases.
+
+
+* **How SDN Makes Network Slicing Possible:**
+* **Decoupling Control from Data:** The centralized SDN controller manages the logic of the network, while physical and virtual switches merely forward packets based on programmed rules.
+* **End-to-End Dynamic Programming:** The SDN controller uses standardized southbound protocols (e.g., OpenFlow, P4Runtime, Segment Routing) to program isolated forwarding paths across the three key network domains:
+* **Radio Access Network (RAN):** Allocating dynamic radio spectrum, time slots, and antenna priorities.
+* **Transport Network:** Steering traffic across optical and IP backbones with guaranteed bandwidth and latency constraints.
+* **Core Network & Edge (UPF):** Routing packets directly to localized edge computing (MEC) nodes or central data centers.
+
+
+* **Flow-Based Tagging and Virtual Overlays:** The controller applies slice identifiers (e.g., Single Network Slice Selection Assistance Information / S-NSSAI, VLAN tags, or VXLAN VNIs) to tag and isolate packets at line rate, ensuring strict isolation between flows.
+
+
+* **Tailoring Slices to the Three 5G Service Classes:**
+* **eMBB (Enhanced Mobile Broadband):**
+* *Focus:* High throughput and massive data volume for 4K/8K video streaming and AR/VR.
+* *SDN Action:* Programs wide-bandwidth paths into high-capacity central data centers with large packet buffers.
+
+
+* **URLLC (Ultra-Reliable Low-Latency Communication):**
+* *Focus:* Sub-millisecond latency and near-zero packet loss (99.999% reliability) for autonomous vehicles and industrial control.
+* *SDN Action:* Steers vehicle telemetry to nearby edge computing nodes (MEC) over the shortest physical paths, bypassing central data center delays and assigning packets to strict priority hardware queues.
+
+
+* **mMTC (Massive Machine-Type Communication):**
+* *Focus:* Extreme connection density and low power consumption for smart meters and utility sensors.
+* *SDN Action:* Allocates lightweight, power-efficient virtual paths with simplified signaling protocols so devices can transmit small, occasional bursts and return to sleep mode without draining battery life.
+
+
+
+
+
+---
+
+### b) Key Objectives and Benefits of Network Slicing
+
+* **Key Objectives:**
+* **Performance Isolation ("Noisy Neighbor" Prevention):** Ensure that a sudden traffic surge in one slice (e.g., millions of fans streaming video during a stadium match on the eMBB slice) does not consume resources or degrade the latency of safety-critical services (the URLLC vehicle slice).
+* **Security Isolation:** Prevent security breaches in one slice from leaking into another. If an insecure smart meter on the mMTC slice is compromised, the attacker cannot pivot laterally across the hypervisor or flow tables to intercept autonomous vehicle commands.
+* **Guaranteed Service Level Agreements (SLAs):** Deliver deterministic, contractually guaranteed performance metrics (such as maximum latency bounds, minimum throughput, and packet delivery ratios) customized per enterprise tenant.
+* **Optimized Resource Utilization:** Maximize the efficiency of physical compute, transport bandwidth, and radio spectrum by dynamically allocating resources based on real-time service demand rather than static reservations.
+
+
+* **Key Benefits:**
+* **Faster Time-to-Market (Agility):** New enterprise services, virtual private cellular networks, or temporary event slices can be provisioned and activated via software templates in minutes, without manual hardware installation.
+* **Lower Capital Expenditures (CapEx):** Running all services on shared commercial off-the-shelf (COTS) hardware eliminates the need to build separate, single-purpose physical networks for different industries.
+* **Reduced Operational Expenditures (OpEx):** Centralized software control allows automated slice creation, monitoring, scaling, and decommissioning, significantly reducing manual engineering and maintenance workloads.
+* **Customized Policy & Service Flexibility:** Each slice operates with its own custom security rules, billing structures, mobility management profiles, and quality-of-service (QoS) priorities suited precisely to its application requirements.

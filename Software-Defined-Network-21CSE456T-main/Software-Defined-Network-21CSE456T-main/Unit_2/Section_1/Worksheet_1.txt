@@ -1,0 +1,37 @@
+SDN Worksheet Unit 2 Section 1
+### Question
+
+1. Scenario: A network administrator is tasked with optimizing traffic flow in a data center to prioritize critical application traffic. The existing network is based on traditional hardware.
+Question: How would the introduction of SDN with an OpenFlow-enabled infrastructure fundamentally change the approach to this task compared to a traditional network?
+
+---
+
+### Answer
+
+The introduction of Software-Defined Networking (SDN) with an OpenFlow-enabled infrastructure shifts the optimization task from a **distributed, rigid, hop-by-hop configuration model** to a **centralized, dynamic, programmatic flow-management architecture**.
+
+The fundamental differences include:
+
+* **Centralized Global View vs. Localized Hop-by-Hop Visibility:**
+* **Traditional Network:** Switches and routers make independent forwarding decisions based only on locally available routing tables and adjacent link states. The administrator must individually log into every switch along the path to configure VLANs, DiffServ/DSCP classifications, and priority queues.
+* **SDN with OpenFlow:** The centralized SDN controller maintains a complete, real-time topological view of data center link states, queue depths, and traffic loads. The administrator specifies optimization policies in one place at the controller layer, which automatically orchestrates the entire data path across the fabric.
+
+
+* **Multi-Layer Flow Matching vs. Destination-Based Routing:**
+* **Traditional Network:** Traffic forwarding predominantly relies on destination IP addresses (Layer 3) and destination MAC addresses (Layer 2). Differentiating critical applications from general bulk traffic often requires complex Access Control Lists (ACLs) or Policy-Based Routing (PBR) scripts that can degrade hardware performance.
+* **SDN with OpenFlow:** OpenFlow switches use flexible match-action tables capable of matching across 12+ packet header fields simultaneously (Layers 2 through 4), including source/destination IP, TCP/UDP port numbers, VLAN IDs, and QoS marks. This enables precise, granular classification of critical application flows down to specific service endpoints or tenant IDs.
+
+
+* **Dynamic Traffic Steering vs. Static Path Utilization:**
+* **Traditional Network:** Networks frequently use Spanning Tree Protocol (STP) or Equal-Cost Multi-Path (ECMP). STP blocks redundant links completely, while standard hash-based ECMP cannot detect link utilization, frequently causing elephant flows to collide on the same link and starve latency-sensitive traffic.
+* **SDN with OpenFlow:** The controller can dynamically steer distinct flows along non-interfering physical paths. It can route high-priority, latency-sensitive critical application traffic along dedicated low-latency paths while diverting high-volume backup or batch traffic onto alternate, longer, or higher-bandwidth paths.
+
+
+* **Programmatic Adaptation and Real-Time Telemetry:**
+* **Traditional Network:** Adapting to sudden traffic bursts or congestion requires manual intervention or waiting for slow protocol convergence times.
+* **SDN with OpenFlow:** OpenFlow flow tables maintain per-flow byte and packet counters. Software applications running on the controller monitor these statistics in real time. If a primary path experiences queue buildup or delay, the controller immediately recalculates routes and pushes updated flow entries (`OFPT_FLOW_MOD`) to bypass congestion dynamically without dropped sessions.
+
+
+* **Decoupled Architecture and Agility:**
+* **Traditional Network:** Configuration is tightly bound to vendor-specific CLIs and proprietary feature sets, making updates slow and error-prone.
+* **SDN with OpenFlow:** Decoupling the control plane (software controller) from the data plane (commodity OpenFlow switches) allows policies to be updated programmatically via REST APIs or high-level scripting, enabling zero-touch provisioning and continuous automated traffic optimization.

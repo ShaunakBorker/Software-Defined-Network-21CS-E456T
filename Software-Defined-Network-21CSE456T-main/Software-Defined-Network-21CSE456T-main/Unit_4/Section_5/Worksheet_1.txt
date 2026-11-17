@@ -1,0 +1,51 @@
+SDN Worksheet Unit 4 Section 5
+### Case Study – 1 (SLO-1): Understanding the Concept and Need for NFV
+
+---
+
+### a) Concept of NFV (Network Function Virtualization)
+
+* **Separating Software from Hardware:**
+* Traditionally, network functions (firewalls, routers, load balancers, DNS, EPC/5G core nodes) come pre-packaged inside expensive, proprietary hardware boxes ("middleboxes").
+* **NFV** decouples these network functions from specialized hardware and runs them as pure software on standard, commercial off-the-shelf (COTS) IT equipment (high-volume servers, storage disks, and switches using standard x86 processors).
+
+
+* **Virtual Network Functions (VNFs):**
+* In an NFV architecture, traditional hardware boxes are transformed into software instances called **VNFs** (or containerized CNFs).
+* These VNFs run inside Virtual Machines (VMs) or lightweight containers on top of a hypervisor (e.g., KVM, VMware) just like standard cloud applications.
+
+
+* **Standardized Architecture (ETSI NFV Framework):**
+* **NFV Infrastructure (NFVI):** The physical hardware (compute, storage, network) and the virtualization layer (hypervisors) that pool resources together.
+* **VNFs:** The actual virtualized network appliances (e.g., virtual firewall, virtual router).
+* **Management and Orchestration (MANO):** The centralized system that automatically coordinates, spins up, scales, and shuts down VNFs across data centers.
+
+
+
+---
+
+### b) Limitations of Traditional Network Infrastructure Addressed by NFV
+
+* **High Capital Expenses (CapEx):**
+* *Traditional Limitation:* Every new function requires purchasing dedicated, single-purpose hardware appliances from specific vendors at high prices.
+* *NFV Solution:* Runs all network tasks on cheap, standardized commercial servers, drastically reducing upfront hardware acquisition costs.
+
+
+* **Long Deployment Times and Slow Time-to-Market:**
+* *Traditional Limitation:* Launching a new service (like an enterprise firewall or VPN service) requires shipping physical boxes, running rack cables, installing power feeds, and manual configuration—taking weeks or months.
+* *NFV Solution:* Services are spun up entirely through software templates and scripts in a matter of minutes.
+
+
+* **Poor Scalability and Over-Provisioning:**
+* *Traditional Limitation:* Operators must buy hardware sized for worst-case peak traffic. Most of the year, that expensive equipment sits mostly idle; if traffic spikes beyond capacity, the system drops packets because adding new capacity requires ordering another physical unit.
+* *NFV Solution:* Provides cloud elasticity—VNFs can automatically scale out (add more virtual instances) during peak demand and scale in when traffic drops, optimizing resource usage.
+
+
+* **Vendor Lock-In:**
+* *Traditional Limitation:* Proprietary appliances use vendor-specific operating systems, management tools, and licensing models, making it difficult and expensive to switch suppliers.
+* *NFV Solution:* Standardizes the underlying compute environment on open platforms (like Linux, OpenStack, Kubernetes), allowing operators to mix and match software functions from different vendors on common hardware.
+
+
+* **High Operational Expenses (OpEx):**
+* *Traditional Limitation:* Massive racks of disparate hardware consume substantial power, generate heavy heat loads requiring cooling, occupy large real-estate footprints, and require specialized field engineers for maintenance.
+* *NFV Solution:* Consolidates multiple virtual functions onto high-density servers, sharply lowering power consumption, cooling costs, physical space needs, and field maintenance labor.

@@ -1,0 +1,65 @@
+SDN Worksheet Unit 5 Section 8
+### 1. Immediate Impact of the Attack
+
+A volumetric DDoS targeting the centralized SDN controller's control-plane IP address impacts both the controller host and the broader network:
+
+* **Control-Channel Saturation and Switch Disconnects:**
+* The southbound interface (e.g., OpenFlow/P4Runtime over TLS/TCP) shares network links or NICs with the target IP.
+* Legitimate control messages (`EchoRequest`/`EchoReply`, `Packet-In`, `FlowMod`, port status updates) are queued or dropped.
+* Switches miss keepalive/heartbeat thresholds, assume the controller has failed, and transition into fallback states (e.g., OpenFlow `fail-standalone` or `fail-secure`).
+
+
+* **Controller Resource Exhaustion:**
+* Processing the volumetric influx saturates host CPU, exhausts network buffers, and fills the OS socket table (e.g., SYN queue exhaustion).
+* The controller becomes completely unresponsive to legitimate management operations, API calls, and telemetry streams.
+
+
+* **Data-Plane Paralysis for New Flows:**
+* While existing flows continue to forward at line rate based on cached entries in switch hardware (TCAM), **new network flows cannot be established**.
+* Any packet triggering a table-miss that requires controller intervention (`Packet-In`) is stalled or discarded, effectively freezing dynamic routing, host discovery, DHCP assignment, and on-demand security policies.
+
+
+
+---
+
+### 2. Architectural Design Choices to Mitigate the Threat
+
+To protect the control plane from direct addressing and volumetric exhaustion, the network architecture must incorporate separation, clustering, and rate limiting:
+
+#### A. Out-of-Band (OOB) Control Plane Separation (Primary Defense)
+
+* **Dedicated Physical or Cryptographic Isolation:**
+* Connect the controller’s southbound interfaces to switches via a completely separate, physically isolated management network (dedicated cabling, separate management switches/NICs) unreachable from the production data plane or the public internet.
+
+
+* **Non-Routable Addressing & Strict ACLs:**
+* If physical OOB is cost-prohibitive, enforce strict **In-Band Isolation** using isolated management VRFs (Virtual Routing and Forwarding) or encrypted overlays (IPsec/WireGuard).
+* The controller's control-plane IP must never be advertised or routable outside the internal management segment.
+* Ingress perimeter routers must immediately discard any external traffic targeting controller subnets via hardware ACLs.
+
+
+
+#### B. Distributed, Clustered Controller Architecture with Anycast
+
+* **Elimination of Single-Point Target:**
+* Replace the single centralized controller with a geographically distributed, active-active controller cluster (e.g., ONOS or OpenDaylight using Raft/Atomix consensus).
+
+
+* **BGP Anycast for Control Endpoints:**
+* Assign a shared Anycast IP address across the cluster nodes.
+* Ingress volumetric attacks are naturally diffused and diluted across multiple scrubbing points and server nodes rather than bottlenecking on a single physical host.
+
+
+* **Automated Mastership Rebalancing:**
+* If a specific controller node experiences resource pressure, the cluster reassigns switch mastership roles to healthy nodes without disrupting data-plane forwarding.
+
+
+
+#### C. Edge Switch Ingress Filtering and Packet-In Rate Limiting
+
+* **Hardware Metering on the Data Plane:**
+* Configure OpenFlow meter bands (`OFPMT_METER`) or CoPP (Control Plane Policing) on switches to strictly limit the rate of `Packet-In` messages forwarded to the controller.
+
+
+* **Proactive Wildcard Flow Rules:**
+* Minimize controller dependency by provisioning coarse, proactive wildcard rules for standard forwarding. This prevents unexpected traffic surges from generating millions of table-miss exceptions to the control plane.

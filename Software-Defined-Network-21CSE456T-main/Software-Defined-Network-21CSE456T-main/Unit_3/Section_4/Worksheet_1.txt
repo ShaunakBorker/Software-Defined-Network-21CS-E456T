@@ -1,0 +1,21 @@
+SDN Worksheet Unit 3 Section 4
+### Question
+
+4. Role of Network Applications (Understanding)
+Problem 4: What is the fundamental role of a Network Application (NetApp) in an SDN architecture? Explain how NetApps leverage the SDN controller to implement network policies or services.
+
+---
+
+### Answer
+
+* **Fundamental Role of a Network Application (NetApp):**
+* **Defines Business Intent:** A NetApp represents the actual goals or rules of the network (what the owner wants to achieve), rather than the low-level technical plumbing.
+* **Translates High-Level Needs:** Instead of manually configuring routers and switches, a NetApp lets operators write policies in plain logic—such as "block sales traffic from engineering," "balance web traffic evenly," or "give video calls top priority."
+* **Provides Network Services:** It acts as the software layer that provides features like firewalls, dynamic routing, access control, traffic monitoring, and load balancing.
+
+
+* **How NetApps Leverage the SDN Controller:**
+* **Uses Northbound APIs to Issue Commands:** NetApps sit on the Application Plane and talk down to the SDN controller using simple interfaces (like REST APIs or Intent APIs). The NetApp tells the controller *what* outcome it wants without worrying about how individual switches work.
+* **Reads Network State from the Controller:** The SDN controller maintains a real-time, global map of the whole network (which links are up, which switches are busy, where hosts are located). The NetApp queries the controller to make smart, informed decisions based on live network health.
+* **Relies on the Controller to Program Switches:** Once the NetApp decides on a policy, the controller does the hard work. The controller translates the NetApp's request into exact switch instructions (flow rules) and pushes them down to the physical or virtual switches using southbound protocols like OpenFlow.
+* **Reacts to Network Events:** When unexpected events happen—such as a link failure, high congestion, or a security scan detecting a rogue device—the controller alerts the NetApp. The NetApp then computes a new policy and asks the controller to reroute traffic automatically.

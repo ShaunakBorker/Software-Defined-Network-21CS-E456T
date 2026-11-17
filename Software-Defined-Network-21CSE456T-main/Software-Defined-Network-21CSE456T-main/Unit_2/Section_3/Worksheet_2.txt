@@ -1,0 +1,25 @@
+
+### Question
+
+Scenario: A network operator is using ONOS and wants to integrate a new type of legacy network device that uses a proprietary protocol.
+Question: Which ONOS interface (Northbound, Southbound, Eastbound, Westbound) would be most relevant for adding support for this new device's proprietary protocol? Explain why.
+
+---
+
+### Answer
+
+The **Southbound Interface (SBI)** is the most relevant interface for integrating this new legacy device.
+
+* **Role of the Southbound Interface:**
+* In Software-Defined Networking and specifically within ONOS (Open Network Operating System), the Southbound Interface is dedicated to communication between the centralized controller and the underlying data-plane forwarding hardware (switches, routers, and legacy appliances).
+* It is responsible for device discovery, collecting link status and statistics, and translating high-level controller directives into device-specific commands.
+
+
+* **Why Southbound is Specifically Required Here:**
+* **Protocol Translation via Providers and Drivers:** ONOS features a modular architecture that uses **Southbound Providers** and **Device Drivers** to interact with network elements. To communicate with a legacy device using a proprietary protocol, the network operator must implement a custom southbound protocol plugin/driver (similar to how ONOS provides existing southbound plugins for OpenFlow, NETCONF, P4Runtime, SNMP, and OVSDB).
+* **Device Abstraction:** The custom southbound driver translates the proprietary messaging syntax of the legacy device into standardized, internal ONOS core representations (such as `DeviceDescription`, `PortDescription`, and flow rules). This allows the ONOS core and upper-layer applications to interact with the proprietary hardware uniformly without needing to know anything about the underlying proprietary protocol.
+
+
+* **Why the Other Interfaces Do Not Apply:**
+* **Northbound Interface:** Exposes REST APIs and intent-based abstractions upward to external business logic, cloud orchestrators, and network management applications—not downward to network devices.
+* **Eastbound / Westbound Interfaces:** Facilitate horizontal synchronization, state replication, and communication between peer controller instances in an ONOS distributed cluster, or across separate SDN domains.SDN Worksheet Unit 2 Section 3

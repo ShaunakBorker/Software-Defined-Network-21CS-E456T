@@ -1,0 +1,68 @@
+SDN Worksheet Unit 5 Section 9
+When one node in a three-node distributed SDN controller cluster (e.g., ONOS using Atomix/Raft or OpenDaylight using Akka/Raft) abruptly loses power, the system is designed to maintain continuous network operation without service disruption. The failure triggers specific, automated behaviors across both the control plane and the data plane.
+
+---
+
+### 1. Control-Plane Behavior
+
+Distributed controller clusters rely on majority consensus protocols (typically **Raft** or Paxos) and an odd number of nodes ($2f + 1$) to tolerate $f$ node failures. In a 3-node cluster ($N=3$), the cluster tolerates $f=1$ failure because a quorum requires a strict majority:
+
+$$\text{Quorum Size} = \left\lfloor \frac{N}{2} \right\rfloor + 1 = \left\lfloor \frac{3}{2} \right\rfloor + 1 = 2 \text{ nodes}$$
+
+* **Cluster Quorum Retention:**
+* The two surviving nodes ($2/3$) constitute a valid majority. The cluster retains quorum, meaning both read and write operations (such as installing new flows, updating intents, and modifying topology state) remain fully functional.
+* *Note:* If a second node were to fail before the dead node recovers, quorum would be lost ($1/3 < 2$), causing the cluster to freeze state modifications to prevent split-brain inconsistencies.
+
+
+* **Failure Detection via Heartbeats:**
+* The surviving nodes detect the dead node within milliseconds due to missed periodic heartbeat signals (`AppendEntries` or keepalive pings).
+* Simultaneously, switches that had active southbound control channels (OpenFlow/P4Runtime over TCP/TLS) to the dead node detect a socket timeout or TCP connection reset.
+
+
+* **Mastership Re-Election & Rebalancing:**
+* In a distributed SDN cluster, every switch has one controller node designated as its **Master** (active read/write control) and one or more nodes assigned as **Standby Backups** (replicated state, ready to take over).
+* **For switches where the dead node was merely a Standby:** No role transition is required. The cluster simply updates its internal device registry to reflect that the standby node is unreachable.
+* **For switches where the dead node was the Master:**
+1. The surviving nodes initiate a mastership election via the Raft consensus engine.
+2. One of the pre-synchronized standby nodes is elected as the new Master.
+3. The new Master asserts its authority over the southbound protocol by sending an updated role request message (e.g., an OpenFlow `OFPT_ROLE_REQUEST` with an incremented generation ID `generation_id`).
+4. The switch updates its internal state, acknowledging the new Master and directing all subsequent asynchronous messages (`Packet-In`, `PortStatus`) to it.
+
+
+
+
+* **Internal State Synchronization:**
+* Because the dead node previously synchronized its flow, host, and topology state to the remaining nodes via distributed hash rings and replicated logs, **zero control-plane state is lost**.
+
+
+
+---
+
+### 2. Data-Plane (Forwarding) Behavior
+
+* **Uninterrupted Line-Rate Forwarding:**
+* Physical and virtual switches operate with hardware-based forwarding tables (TCAM / ASIC pipeline) decoupled from the controller.
+* All active flow rules already programmed into switch hardware remain in place. Customer traffic, existing TCP connections, routing tunnels, and ongoing packet streams continue forwarding at wire speed with **zero packet loss and zero downtime**.
+
+
+* **Handling of New Flows (Table-Miss Events):**
+* **Transient Millisecond Buffering:** During the brief window (typically a few hundred milliseconds) while the switch detects the disconnect and the new Master completes the role handshake, any new packet triggering a `Packet-In` (table-miss) is either held in the local switch buffer or discarded depending on switch configuration.
+* **Immediate Normalcy Post-Election:** As soon as the new Master asserts its role, it begins processing queued and incoming `Packet-In` events, calculating paths, and pushing down new flow entries (`FlowMod` / P4Runtime Write RPCs) without operator intervention.
+
+
+* **Fail-Secure vs. Fail-Standalone Modes:**
+* Even if transient control hiccups occur, switches configured in **Fail-Secure** mode continue enforcing active flow tables and drop only unknown unmatched packets. They do not drop back to legacy unmanaged bridging unless all controllers in the cluster become unreachable and timeout thresholds expire.
+
+
+
+---
+
+### Summary of Failure Impact
+
+| Dimension | System Status | Impact / Behavior |
+| --- | --- | --- |
+| **Cluster Quorum** | Maintained ($2/3$ nodes active) | Read and write operations remain completely available. |
+| **Switch Mastership** | Automated Re-Election | Standby nodes promote to Master within milliseconds via Raft consensus. |
+| **Existing Data Traffic** | Normal (Zero Downtime) | Hardware TCAM entries continue forwarding packets at line rate. |
+| **New Flow Setup** | Brief Pause $\rightarrow$ Resumed | Unmatched flows resume processing as soon as role handoff completes. |
+| **Cluster Resilience** | Degraded ($N=2$) | High availability remains active, but the cluster cannot survive another node loss without losing quorum. |

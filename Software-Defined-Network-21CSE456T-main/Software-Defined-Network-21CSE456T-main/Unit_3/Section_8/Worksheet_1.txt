@@ -1,0 +1,62 @@
+SDN Worksheet Unit 3 Section 8
+### Question
+
+8. Basic ONOS Application (Application)
+Problem 8: Imagine you want to create a simple ONOS application that monitors link failures in your SDN network and logs them to the ONOS console. Briefly describe the steps you would take to achieve this, mentioning which ONOS core services or APIs your application would likely subscribe to. You don't need to write code, but explain the logical flow.
+
+---
+
+### Answer
+
+* **Key ONOS Core Services and APIs Used:**
+* **`LinkService`:** The primary core service responsible for tracking the topology graph and link health across all switches.
+* **`LinkListener`:** The event-listener interface provided by `LinkService` that receives topology events in real time.
+* **`LinkEvent`:** The event object emitted whenever link states change (such as link discovery, port state toggle, or link loss).
+* **`org.slf4j.Logger`:** The standard logging facility inside the OSGi container used to output formatted messages directly to the ONOS console and log files (`karaf.log`).
+
+
+
+---
+
+* **Logical Flow and Implementation Steps:**
+* **1. Define the Component Lifecycle:**
+* Create a standard ONOS component class using OSGi annotations (`@Component`).
+* Implement the activation method (`@Activate`) to run startup logic when the app is enabled.
+* Implement the deactivation method (`@Deactivate`) to clean up resources when the app is stopped.
+
+
+* **2. Inject the Core Service Dependency:**
+* Use the `@Reference` annotation to inject the ONOS `LinkService` directly into your application class at runtime.
+
+
+* **3. Implement the Custom Event Listener:**
+* Create an internal listener class that implements `LinkListener`.
+* Override the `event(LinkEvent event)` method:
+* Check the event type using `event.type()`.
+* Filter specifically for disconnection and failure events, notably **`LINK_REMOVED`** or **`LINK_UPDATED`** (where `link.state() == INACTIVE`).
+* Extract the failure details from the event:
+* Source switch ID and port (`event.subject().src()`).
+* Destination switch ID and port (`event.subject().dst()`).
+* Timestamp or link type (e.g., direct optical/ethernet link).
+
+
+
+
+
+
+* **4. Log the Failure Event:**
+* When a failure type matches, use the logger to output a high-priority warning message to the ONOS console:
+* Example: `log.warn("CRITICAL: Link failure detected between switch {} port {} and switch {} port {}", srcSwitch, srcPort, dstSwitch, dstPort)`.
+
+
+
+
+* **5. Register and Deregister the Listener:**
+* Inside `@Activate`: Call `linkService.addListener(myListener)` to start receiving live link telemetry.
+* Inside `@Deactivate`: Call `linkService.removeListener(myListener)` so the application safely unsubscribes and releases system resources without memory leaks.
+
+
+* **6. Build, Deploy, and Test:**
+* Package the application into an ONOS `.oar` (ONOS Application Archive) file using Maven/Bazel.
+* Upload and activate the application using the ONOS CLI (`app activate <app-name>`).
+* In Mininet, tear down a link between two switches (`link s1 s2 down`) and verify that the link failure warning immediately appears in the ONOS console and Karaf log stream.

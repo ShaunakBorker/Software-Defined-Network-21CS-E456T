@@ -1,0 +1,125 @@
+SDN Worksheet Unit 5 Section 5
+### Dynamic Access Control Solution for Visiting Researchers Using SDN
+
+This design uses **identity-driven micro-segmentation** and **dynamic flow programming**. Access permissions follow the researcher's authenticated identity and device, rather than depending on static VLANs or physical wall ports.
+
+---
+
+### 1. Architectural Overview & Component Stack
+
+```
++---------------------------------------------------------------------------------+
+|                            Application & Identity Tier                          |
+|   [ Identity Provider (IdP) / Eduroam / 802.1X ] <---> [ Lab Booking / RBAC ]  |
++----------------------------------------+----------------------------------------+
+                                         | REST / Webhook
++----------------------------------------v----------------------------------------+
+|                          SDN Control & Policy Engine                            |
+|          [ Dynamic Access Controller ] <---> [ Global Topology / Inventory ]   |
+|     - Maps Researcher Device -> Authorized Lab IPs + Service Ports              |
+|     - Calculates isolated shortest paths & generates strict flow tables        |
++----------------------------------------+----------------------------------------+
+                                         | Southbound (OpenFlow / P4Runtime)
++----------------------------------------v----------------------------------------+
+|                     Edge & Core Network Infrastructure                          |
+|                                                                                 |
+|   [ Visiting Researcher ]                                                       |
+|             |                                                                   |
+|             v (Edge Switch / WAP Port)                                          |
+|      +---------------+                                                          |
+|      | Ingress Table | ---> Drops any traffic to Administrative/Student subnets |
+|      +-------+-------+                                                          |
+|              |                                                                  |
+|              | Forwarding only to authorized IP:Port                            |
+|              v                                                                  |
+|   +---------------------+             +----------------------------------+      |
+|   | Target Lab Server   |             | Prohibited Networks              |      |
+|   | (SSH / GPU Cluster) |             | (Admin ERP, Student Wi-Fi, Grades)|     |
+|   +---------------------+             +----------------------------------+      |
++---------------------------------------------------------------------------------+
+
+```
+
+* **Identity & Authentication Engine:** An enterprise 802.1X RADIUS server (or Eduroam / captive portal) linked to the university's access management system (LDAP/Active Directory) and laboratory reservation portal.
+* **SDN Controller & Policy Engine (e.g., ONOS / OpenDaylight):** Maintains an access control matrix mapping individual authenticated visitor MAC/IP addresses to specific target laboratory node IPs and TCP/UDP ports.
+* **Programmable Data Plane:** Ingress campus edge switches and wireless access points running OpenFlow or P4Runtime.
+
+---
+
+### 2. Operational Lifecycle
+
+#### Step 1: Device Onboarding and Authentication
+
+1. The visiting researcher connects via Wi-Fi (802.1X) or patches into any Ethernet desk port in the department.
+2. The switch sends an authentication request to the RADIUS server.
+3. Upon successful credential validation, the RADIUS server queries the lab management database, verifying that the researcher has an active project or bench reservation for **Lab Cluster A** (`10.20.1.50`, port `22` for SSH, port `8888` for Jupyter Notebook).
+4. The authentication service fires an asynchronous webhook event to the SDN controller:
+```json
+{
+  "event": "USER_AUTHENTICATED",
+  "user_role": "visiting_researcher",
+  "mac_address": "00:1A:2B:3C:4D:5E",
+  "assigned_ip": "172.16.100.45",
+  "ingress_switch": "sw-floor2-edge",
+  "ingress_port": 18,
+  "allowed_targets": [
+    { "ip": "10.20.1.50", "protocols": ["tcp/22", "tcp/8888"] },
+    { "ip": "10.20.1.60", "protocols": ["tcp/443"] }
+  ],
+  "lease_expiration": "2026-10-30T18:00:00Z"
+}
+
+```
+
+
+
+#### Step 2: Proactive Flow Installation at Ingress
+
+Instead of flooding the controller with unhandled packets, the SDN controller computes the path and proactively pushes down a strict, granular multi-table pipeline directly to the ingress switch `sw-floor2-edge`:
+
+* **Table 0 (Ingress Admission):**
+* Verifies source IP/MAC binding to prevent address spoofing:
+```text
+Match: in_port=18, eth_src=00:1A:2B:3C:4D:5E, ip_src=172.16.100.45 -> Goto Table 1
+Match: in_port=18, Any other source -> DROP
+
+```
+
+
+
+
+* **Table 1 (Micro-Segmentation / Security Filtering):**
+* Explicitly allows communication only to the assigned computational targets:
+```text
+Priority 200: Match: ip_dst=10.20.1.50, tcp_dst=22   -> Forward (Path to Lab Cluster A)
+Priority 200: Match: ip_dst=10.20.1.50, tcp_dst=8888 -> Forward (Path to Lab Cluster A)
+Priority 200: Match: ip_dst=10.20.1.60, tcp_dst=443  -> Forward (Path to Lab Sensor Hub)
+Priority 100: Match: ip_dst=DNS_Server_IP, udp_dst=53 -> Forward (Campus DNS Resolver)
+Priority 50:  Match: ip_dst=10.0.0.0/8                -> DROP (Blocks all Student & Admin subnets)
+Priority 10:  Match: Any                              -> DROP (Strict Default-Deny)
+
+```
+
+
+
+
+
+#### Step 3: Symmetric Reverse Path Configuration
+
+The controller simultaneously provisions the reverse flow rules on the target server's leaf switch to allow return traffic (`established/related` states), ensuring that no other host on that subnet can initiate unsolicited connections to the researcher's laptop.
+
+#### Step 4: Ephemeral Lifecycles & Dynamic De-provisioning
+
+* **Session Expiry / Disconnect:** When the researcher's lab session ends, or 802.1X sends a `RADIUS-Disconnect` event, the SDN controller issues a flow table deletion command (`OFPFC_DELETE`), clearing the entries from hardware tables.
+* **Lateral Movement Prevention:** Even if the visitor runs an active network scanner (e.g., Nmap sweep), all packets addressed outside their allowed target list hit the Table 1 `DROP` rule at the switch ingress port at wire speed, generating zero network load and blinding them to the existence of student or administrative infrastructure.
+
+---
+
+### 3. Comparison with Traditional VLAN/ACL Approaches
+
+| Evaluation Metric | Traditional VLAN & Hardware ACLs | Proposed SDN Dynamic Solution |
+| --- | --- | --- |
+| **Port Mobility** | Fixed. User must sit at a specifically patched physical port or specific SSID. | Fully portable. Any port or AP enforces the exact same policy dynamically. |
+| **Granularity** | Coarse subnet-level access (exposes all devices on the lab subnet). | Micro-segmentation down to individual IP addresses and L4 port numbers. |
+| **Operational Overhead** | Manual ticket submission to configure switch trunking and router ACLs. | Zero-touch automation via API triggers from authentication/booking software. |
+| **TCAM Utilization** | Large static ACLs stay permanently loaded across all core routers. | Transient, ephemeral flow rules exist in TCAM only while the user is connected. |

@@ -1,0 +1,62 @@
+SDN Worksheet Unit 4 Section 1
+### Case Study – 1 (SLO-1): Understanding Data Center Challenges and the Need for SDN
+
+---
+
+### a) Key Challenges Faced by the Traditional Data Center
+
+* **Manual, Device-by-Device Configuration:**
+* Network administrators must log into individual switches and routers one at a time via CLI to make changes.
+* This process is slow, labor-intensive, and prone to human errors, which leads to misconfigurations during critical peak periods.
+
+
+* **Slow Deployment of New Services:**
+* Provisioning new network resources or expanding e-commerce application capacity requires manual VLAN setup, ACL updates, and routing reconfigurations across multiple physical boxes.
+* This delays launching new sales campaigns, microservices, or temporary infrastructure.
+
+
+* **Frequent Network Congestion and Inefficient Bandwidth Utilization:**
+* Traditional routing protocols typically pick the single shortest path (or rely on static Spanning Tree Protocol to block redundant links).
+* This causes specific links to choke under heavy seasonal traffic while alternate physical links sit idle or underutilized.
+
+
+* **Lack of Global Visibility and Centralized Control:**
+* Control logic is distributed across every device. No single component has a complete, real-time map of all data center traffic flows.
+* Administrators cannot see end-to-end paths, making traffic steering difficult and reactive rather than predictive.
+
+
+* **Complex and Slow Troubleshooting:**
+* Diagnosing bottlenecks or outages requires manually running diagnostics across dozens of individual network devices.
+* Tracking down packet drops or latency spikes during seasonal sale peaks takes too long, increasing the risk of downtime and lost revenue.
+
+
+
+---
+
+### b) Why Software-Defined Networking (SDN) Is Suitable for Addressing These Challenges
+
+* **Centralized Management and Global View:**
+* SDN moves the decision-making brain (the control plane) into a central SDN controller.
+* The controller maintains a complete, real-time view of the entire data center network topology and link utilization.
+* Administrators can monitor the whole infrastructure from a single dashboard, making troubleshooting and traffic tracking much faster and simpler.
+
+
+* **Dynamic Traffic Engineering and Congestion Control:**
+* With a global view of all paths, the controller can dynamically balance traffic across all available physical links.
+* During sudden flash-sale traffic spikes, the controller detects congested links and reroutes flows over underutilized paths automatically in milliseconds, eliminating traffic bottlenecks.
+
+
+* **Automated and Rapid Service Provisioning:**
+* SDN separates hardware forwarding from software policy.
+* Network applications and automation scripts use Northbound APIs to program the network on demand.
+* New application servers, firewalls, and routing rules can be spun up and configured in minutes via software without touching physical hardware cables or per-switch CLIs.
+
+
+* **Flow-Based Granular Control:**
+* Protocols like OpenFlow allow the controller to match on specific packet attributes (e.g., checkout traffic vs. bulk image downloads) and apply custom policies.
+* Critical transactions (such as customer payments) can be prioritized with dedicated quality-of-service (QoS) queues to guarantee low latency during peak hours.
+
+
+* **Elimination of Human Configuration Errors:**
+* Network policies are defined once at the application/controller layer and pushed down uniformly to switches.
+* This replaces error-prone manual typing across dozens of boxes with consistent, automated policy enforcement.

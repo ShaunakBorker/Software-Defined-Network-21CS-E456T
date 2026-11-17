@@ -1,0 +1,40 @@
+SDN Worksheet Unit 2 Section 2
+### Question
+
+Scenario: A large enterprise is experiencing frequent network congestion during peak hours, leading to application slowdowns. The network team wants to implement a solution that allows for dynamic load balancing.
+Question: Explain how an SDN controller, using the OpenFlow protocol, could implement dynamic load balancing to alleviate congestion in this scenario.
+
+---
+
+### Answer
+
+An SDN controller achieves dynamic load balancing by leveraging its centralized view of the network alongside OpenFlow’s telemetry and flow-modification capabilities. Instead of relying on static routing or simple hash-based balancing (which cannot detect link saturation), the controller continuously observes traffic loads and dynamically steers traffic away from congested paths.
+
+The implementation relies on the following mechanisms:
+
+* **Real-Time Telemetry and Congestion Detection:**
+* OpenFlow switches maintain continuous statistical counters for every port, flow entry, and queue.
+* The controller periodically polls switches using `OFPT_MULTIPART_REQUEST` (or `OFPST_PORT_STATS` / `OFPST_FLOW_STATS`) to read transmitted/received bytes, packet drop counts, and error rates.
+* When link utilization on a primary trunk exceeds a defined congestion threshold (e.g., 75% capacity during peak hours), the controller triggers a dynamic load-balancing algorithm.
+
+
+* **Identification of Heavy Flows ("Elephant Flows"):**
+* Rather than rerouting thousands of small, short-lived flows ("mice flows"), the controller analyzes the flow statistics to identify high-bandwidth, long-lived data transfers causing the congestion.
+* Isolating and moving just a few elephant flows immediately relieves pressure on the saturated links with minimal control-plane overhead.
+
+
+* **Dynamic Path Computation:**
+* Using global network graph information updated via LLDP (Link Layer Discovery Protocol), the controller calculates alternative, underutilized paths through the core fabric (such as secondary spine switches or redundant uplinks).
+* The path computation algorithm takes real-time link latency, remaining bandwidth capacity, and queue depth into account.
+
+
+* **Flow Table Modification (`OFPT_FLOW_MOD`):**
+* Once the optimal alternate route is computed, the controller issues `OFPT_FLOW_MOD` messages to the ingress and intermediate switches along the new path.
+* These messages install or update flow rules matching specific packet attributes (such as Source/Destination IP, TCP/UDP port, or VLAN tag) with higher priority and updated output actions (`OFPAT_OUTPUT` pointing to the newly selected interface).
+* Subsequent packets for that session immediately follow the alternate path at line rate without disruption.
+
+
+* **Multi-Path Load Distribution via OpenFlow Group Tables:**
+* To balance traffic proactively across parallel links or server pools, the controller configures OpenFlow **Group Tables** of type `SELECT` (supported in OpenFlow 1.1+).
+* In a `SELECT` group table, the switch hashes packet header fields (IP 5-tuple) locally across multiple action buckets, distributing outbound traffic across several physical interfaces simultaneously.
+* If the controller observes that a particular link bucket is becoming congested, it issues a quick modification to adjust the bucket weights or remove the saturated link from the group.

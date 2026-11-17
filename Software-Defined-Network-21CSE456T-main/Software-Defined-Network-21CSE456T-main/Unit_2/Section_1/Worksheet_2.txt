@@ -1,0 +1,38 @@
+SDN Worksheet Unit 2 Section 1
+### Question
+
+Scenario: A university is planning to deploy SDN in its campus network. They require a controller that is enterprise-grade, provides a comprehensive set of features, and supports a wide range of network services.
+Question: Which controller, ODL or Floodlight, would be a better choice for this scenario, and what are its key advantages for such an environment?
+
+---
+
+### Answer
+
+**OpenDaylight (ODL)** would be the significantly better choice for this university campus deployment.
+
+While Floodlight is a lightweight, Java-based controller well-suited for academic labs, small-scale testbeds, and learning OpenFlow fundamentals, ODL is explicitly built as a modular, carrier- and enterprise-grade networking platform backed by major industry vendors.
+
+The key advantages of OpenDaylight for this enterprise campus scenario include:
+
+* **Model-Driven Service Abstraction Layer (MD-SAL):**
+* ODL uses YANG data modeling and an MD-SAL core, which abstracts underlying device details and allows network services, plugins, and business applications to seamlessly interact through standardized data representations.
+* This architecture enables the university to integrate complex network services (such as authentication, policy routing, QoS, and virtual tenant networks) without tight coupling to specific switch hardware.
+
+
+* **Broad Multi-Protocol and Southbound Support:**
+* Floodlight focuses primarily on OpenFlow (supporting versions 1.0 through 1.4).
+* ODL supports not only OpenFlow (v1.0, 1.3, 1.4, 1.5) but also a wide suite of enterprise and service-provider protocols, including NETCONF, BGP-LS, PCEP, OVSDB, LISP, and SNMP. This allows the university to manage both modern SDN hardware and legacy network equipment across a heterogeneous campus infrastructure.
+
+
+* **Enterprise-Grade High Availability and Clustering:**
+* ODL natively provides a distributed, clustered architecture utilizing the Raft consensus protocol.
+* In a multi-building campus network, an ODL cluster provides high availability, fault tolerance, and horizontal scalability, ensuring that a controller hardware or software failure does not interrupt network administration or campus operations.
+
+
+* **Comprehensive Network Services and Virtualization:**
+* ODL includes rich, out-of-the-box projects and services, such as Group-Based Policy (GBP) for intent-driven security, Virtual Tenant Network (VTN) for slicing networks between academic departments, and deep integration with cloud platforms like OpenStack and Kubernetes.
+* This makes it far easier to enforce micro-segmentation, research lab isolation, and secure student/faculty traffic policies across campus.
+
+
+* **Extensive Northbound APIs for Automation:**
+* ODL automatically generates RESTCONF/REST APIs from its YANG models, enabling the campus IT team to integrate the controller with university identity management systems (e.g., LDAP/Active Directory), automated provisioning tools, and network monitoring dashboards.

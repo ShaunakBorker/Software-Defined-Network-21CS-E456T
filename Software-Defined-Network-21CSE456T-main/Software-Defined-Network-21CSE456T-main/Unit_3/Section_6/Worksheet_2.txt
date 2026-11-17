@@ -1,0 +1,64 @@
+SDN Worksheet Unit 3 Section 6
+### Question
+
+6. Components and Control of Network Slices (Discussion)
+Problem 6: Discuss the key logical components that constitute a network slice within a shared physical infrastructure. Explain how the control and management of each slice are typically achieved, emphasizing the role of orchestration.
+
+---
+
+### Answer
+
+* **Key Logical Components of a Network Slice:**
+* **Radio Access Network (RAN) Subnet:**
+* Manages wireless communication between end-user devices (phones, cars, sensors) and cell towers.
+* Uses radio resource scheduling to reserve frequency channels, time slots, and antenna priorities specifically for that slice.
+
+
+* **Transport Network Subnet:**
+* Transports data between the radio towers, edge servers, and central data centers.
+* Uses SDN-controlled optical or IP networks (via technologies like Segment Routing, VLANs, or MPLS) to assign dedicated bandwidth and enforce latency limits for the slice.
+
+
+* **Core Network Subnet:**
+* Provides user authentication, mobility tracking, and data routing using virtualized network functions (like the 5G User Plane Function / UPF and Access and Mobility Management Function / AMF).
+* Can be scaled up, modified, or placed closer to the user depending on what the slice needs.
+
+
+* **Edge and Cloud Compute Resources:**
+* The virtual machines, containers, and memory pools on standard servers where the software functions of the slice actually run.
+
+
+
+
+* **How Slices are Controlled and Managed:**
+* **Slice Isolation:**
+* Even though all slices share the same physical cables, towers, and servers, each slice operates as a completely separate private network.
+* A software crash, traffic spike, or security issue inside Slice A cannot leak into or degrade Slice B.
+
+
+* **Independent Policies:**
+* Each slice has its own rules for data priority, security encryption, and packet paths, customized for its specific use case (e.g., gaming vs. factory automation).
+
+
+* **Continuous Monitoring:**
+* Real-time telemetry monitors whether each slice is meeting its promised Service Level Agreement (SLA)—such as maintaining less than 1 millisecond latency or 100 Mbps throughput.
+
+
+
+
+* **The Central Role of Orchestration:**
+* **The Master Brain (End-to-End Orchestrator):**
+* The network orchestrator (such as the 3GPP **NSMF** / Network Slice Management Function) coordinates the entire lifecycle of a slice from start to finish.
+
+
+* **Creation and Setup (Automated Stitching):**
+* When a customer requests a new service, the orchestrator automatically translates those business requirements into technical instructions.
+* It talks to the RAN, transport, and core controllers simultaneously to reserve radio bands, build network paths, and spin up virtual core functions in seconds—without manual engineering.
+
+
+* **Dynamic Scaling:**
+* If traffic on a slice spikes (e.g., thousands of fans streaming video inside a stadium), the orchestrator automatically spins up more virtual instances and allocates extra bandwidth on the fly.
+
+
+* **Healing and Decommissioning:**
+* If a hardware node fails, the orchestrator instantly restarts the slice's software functions on a healthy server. Once a temporary slice is no longer needed (e.g., after a live event ends), the orchestrator cleanly tears it down and returns the resources back to the shared pool.

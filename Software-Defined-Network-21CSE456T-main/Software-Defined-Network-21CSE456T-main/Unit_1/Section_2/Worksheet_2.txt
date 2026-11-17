@@ -1,0 +1,27 @@
+### Question
+
+Scenario 11:
+An administrator is simulating a network in Mininet and wants to test a failover script. They need to manually bring down the link between two switches, s1 and s2, to see if traffic reroutes. What two commands would they use in the Mininet CLI to first bring the link down and then check the network's current link status?
+
+---
+
+### Answer
+
+The administrator would execute the following two commands inside the Mininet CLI (`mininet>`):
+
+1. **To bring down the link:**
+```bash
+link s1 s2 down
+
+```
+
+
+*(This disables the virtual link connecting switches `s1` and `s2`.)*
+2. **To check the current status of all links:**
+```bash
+links
+
+```
+
+
+*(This lists all active and inactive links in the topology, verifying that the link between `s1` and `s2` is marked as down/disabled. Alternatively, `net` can also be used to inspect network connections.)*

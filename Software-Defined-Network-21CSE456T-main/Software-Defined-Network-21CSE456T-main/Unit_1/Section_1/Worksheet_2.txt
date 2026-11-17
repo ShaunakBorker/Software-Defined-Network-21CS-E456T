@@ -1,0 +1,30 @@
+Question
+A developer is running Mininet in a VM using the default "NAT" network setting. They start a Ryu controller with a web GUI on port 8080 inside the VM. They try to access the GUI from their host machine's browser (e.g., Chrome) using the VM's IP address but fail. What is the cause of this problem, and what is the recommended solution to fix it?
+
+Answer
+1. Cause of the Problem
+Under the default NAT (Network Address Translation) mode in hypervisors (such as VirtualBox or VMware):
+
+The virtual machine resides on an isolated private subnet behind the hypervisor's internal NAT router.
+
+While the VM can initiate outbound traffic to the host and external internet, the host cannot directly route incoming traffic to the VM's private IP address.
+
+Consequently, requests from the host's web browser cannot reach port 8080 inside the guest OS.
+
+2. Recommended Solutions
+Solution A: Configure Port Forwarding (Recommended for NAT)
+Keep the network adapter set to NAT and forward traffic from a host port to the guest VM port:
+
+Host Port: 8080 (or another unused port like 8081)
+
+Guest Port: 8080
+
+Guest IP: The VM's IP address (or left blank depending on hypervisor defaults)
+
+Access: Open the browser on the host machine and navigate to http://localhost:8080 (or [http://127.0.0.1:8080](http://127.0.0.1:8080)).
+
+Solution B: Change Adapter to Bridged Networking or Host-Only
+
+Bridged Adapter: Makes the VM appear as an independent physical machine on the local physical network. The VM gets its own IP address from the local router/DHCP server, allowing direct access from the host via that IP (http://<vm-ip>:8080).
+
+Host-Only Adapter: Creates a private virtual network shared strictly between the host and VMs, giving the VM an IP directly reachable from the host OS.

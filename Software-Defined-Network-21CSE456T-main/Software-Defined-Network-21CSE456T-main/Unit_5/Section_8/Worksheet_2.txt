@@ -1,0 +1,145 @@
+SDN Worksheet Unit 5 Section 8
+### Plan: SDN Gateway Microsegmentation for Legacy Infusion Pumps
+
+To immediately mitigate the critical vulnerability without touching the physical pumps or interrupting their clinical operations, an **SDN Gateway** (a commodity OpenFlow/P4 white-box switch or an inline virtual switch like Open vSwitch) is introduced transparently at the aggregation layer or in front of the clinical device subnet.
+
+The plan establishes strict, identity-based microsegmentation to sever external internet and lateral hospital access while preserving the bi-directional telemetry link to the internal patient monitoring server.
+
+---
+
+### 1. Architectural Topology & Deployment Mode
+
+Deploy the SDN switch in **transparent Layer 2 bridging mode ("bump-in-the-wire")** on the distribution uplink serving the medical device segment.
+
+```
+       [ 50 Legacy Infusion Pumps ]
+      (Identified by MAC & Assigned IPs)
+                    |
+                    | (Access Layer Switch / WAP)
+                    v
+    +----------------------------------+
+    |         SDN Gateway              |<==== [ SDN Controller ]
+    |  (OpenFlow / P4 White-Box)       |      (Pushes Proactive Flow Rules)
+    +-----------------+----------------+
+                      | Uplink
+                      v
+       [ Hospital Core / Distribution ]
+         /                          \
+        v                            v
+ [ Internal Patient           [ Default Gateway /
+  Monitoring Server ]          Internet Border ]
+ (10.10.40.100 : Port 8443)    (0.0.0.0/0 - BLOCKED)
+
+```
+
+* **Zero Pump Disruption:** The pumps require no firmware reboots, no IP address changes, and no default gateway reconfiguration.
+* **Controller Role:** A centralized SDN controller (e.g., Ryu, ONOS, or OpenDaylight) programs proactive flow rules directly into the SDN Gateway’s hardware flow tables (TCAM).
+
+---
+
+### 2. Device Fingerprinting and Target Profiling
+
+Prior to rule insertion, compile the identity matrix of the 50 vulnerable pumps:
+
+* **Source Match Criteria:**
+* MAC Address OUI / Specific MAC list: `MAC_PUMP_01` through `MAC_PUMP_50`.
+* Assigned static or DHCP reservation IPs: `IP_PUMP_01` through `IP_PUMP_50` (or the specific micro-subnet `10.10.55.0/26`).
+
+
+* **Authorized Destination Service:**
+* Patient Monitoring Server: `10.10.40.100` (Listening on authorized port, e.g., `TCP/8443` or `UDP/514`).
+
+
+* **Approved Infrastructure Services:**
+* Local Hospital DNS: `10.10.1.10:53` (if domain name resolution is strictly required by the pump).
+* Local Hospital NTP: `10.10.1.20:123` (for clinical timestamp synchronization).
+
+
+
+---
+
+### 3. Immediate SDN Flow Pipeline (Proactive Enforcement)
+
+The SDN controller installs high-priority, proactive match-action rules on the gateway. The enforcement logic follows an explicit **Zero Trust / Whitelist** model:
+
+#### Step 1: Allow Authorized Clinical Telemetry (Bi-Directional)
+
+* **Pump to Monitoring Server:**
+```text
+Table=0, Priority=500, 
+Match: eth_src={PUMP_MACS}, ip_src={PUMP_IPS}, ip_dst=10.10.40.100, tcp_dst=8443
+Action: output:Core_Port
+
+```
+
+
+* **Monitoring Server to Pump (Telemetry Acknowledgments):**
+```text
+Table=0, Priority=500, 
+Match: in_port=Core_Port, ip_src=10.10.40.100, ip_dst={PUMP_IPS}, tcp_src=8443
+Action: output:Pump_Port
+
+```
+
+
+
+#### Step 2: Permit Essential Auxiliary Network Services (NTP / Local DNS)
+
+* Allow telemetry time-stamping while restricting targets strictly to internal core servers:
+```text
+Table=0, Priority=400, 
+Match: eth_src={PUMP_MACS}, ip_dst=10.10.1.20, udp_dst=123
+Action: output:Core_Port
+
+```
+
+
+
+#### Step 3: Block All External Internet Access (Default Route Severing)
+
+* Any packet from the 50 pumps targeting external IP space is dropped at the ingress port:
+```text
+Table=0, Priority=300, 
+Match: eth_src={PUMP_MACS}, ip_dst=0.0.0.0/0
+Action: DROP
+
+```
+
+
+
+#### Step 4: Block Lateral East-West Movement
+
+* To stop cross-infection if another device on the network is compromised, isolate pumps from student/guest subnets, office PCs, and other medical gear (e.g., MRI machines, workstations):
+```text
+Table=0, Priority=200, 
+Match: eth_src={PUMP_MACS}, ip_dst=10.0.0.0/8
+Action: DROP
+
+```
+
+
+
+#### Step 5: Anti-Spoofing and Strict Catch-All
+
+* Drop any packet from a pump port presenting an unauthorized source IP/MAC pair.
+* Any unhandled traffic defaults to a line-rate hardware `DROP`.
+
+---
+
+### 4. Operational & Verification Workflow
+
+1. **Rule Pre-Validation (Digital Twin / Dry Run):**
+* Validate the flow definitions against controller policy models to confirm that monitoring traffic to `10.10.40.100` remains continuous and uninterrupted.
+
+
+2. **Instant Policy Push:**
+* Push the ruleset through the controller’s Southbound API (OpenFlow `OFPFC_ADD` or P4Runtime Write RPC) down to the gateway. Rules activate across all 50 pumps in less than one second.
+
+
+3. **Connectivity & Isolation Audit:**
+* **Clinical Verification:** Confirm the patient monitoring dashboard maintains unbroken, real-time vitals and infusion metrics.
+* **Security Verification:** Initiate synthetic outbound ping/HTTP requests mimicking the pump's IP/MAC targeting public internet addresses (e.g., `8.8.8.8`) and verify immediate packet drops in gateway hardware counters.
+
+
+4. **Continuous Telemetry & Tamper Alerting:**
+* Configure flow counters to monitor dropped packets. If an isolated pump begins generating dropped requests (attempting to reach outside IP addresses or scanning local subnets), the controller logs an immediate alert to the Security Operations Center (SOC) indicating potential exploitation or beaconing attempts.

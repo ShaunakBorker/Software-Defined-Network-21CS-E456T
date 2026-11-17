@@ -1,0 +1,127 @@
+SDN Worksheet Unit 5 Section 4
+An Intent-Based Networking (IBN) system translates this business goal into operational reality through a closed-loop lifecycle comprising four core phases: **Translation**, **Activation**, **Assurance**, and **Automated Remediation**.
+
+```
+    +-------------------------------------------------------------+
+    |                    Business Intent Input                    |
+    |  "Ensure the tracking application always has gold-tier SLA" |
+    +------------------------------+------------------------------+
+                                   |
+                                   v
+    +-------------------------------------------------------------+
+    |           Phase 1: Translation & Policy Formulation         |
+    | - Decomposes "Gold-Tier": Latency < 20ms, Loss = 0%, BW 2Gbps|
+    | - Validates feasibility against current topology & capacity |
+    +------------------------------+------------------------------+
+                                   |
+                                   v
+    +-------------------------------------------------------------+
+    |           Phase 2: Automated Activation (SDN / NFV)         |
+    | - Compiles intents into switch-level flow rules & queues    |
+    | - Pushes DSCP markings (EF/AF), strict priority, SRv6 paths |
+    +------------------------------+------------------------------+
+                                   |
+                                   v
+    +-------------------------------------------------------------+
+    |           Phase 3: Continuous Assurance & Telemetry         |
+    | - Streaming telemetry (INT / gNMI) monitors live SLA        |
+    | - Detects link congestion, latency drift, or jitter spikes  |
+    +------------------------------+------------------------------+
+                                   |
+                [ Drift Detected: Peak Season Surge ]
+                                   |
+                                   v
+    +-------------------------------------------------------------+
+    |           Phase 4: Closed-Loop Automated Remediation        |
+    | - Reroutes tracking flows to alternate low-latency paths    |
+    | - Throttles best-effort background traffic (e.g., bulk logs)|
+    +-------------------------------------------------------------+
+
+```
+
+---
+
+### Phase 1: Translation and Policy Formulation
+
+1. **Natural Language / Intent Ingestion:**
+* The administrator enters the declarative goal through a GUI, CLI, or API:
+```json
+{
+  "intent": "guarantee_service_level",
+  "application": "package-tracking",
+  "tier": "gold",
+  "scope": "global-backbone"
+}
+
+```
+
+
+
+
+2. **Contextual Decomposition:**
+* The IBN translation engine maps the abstract term `"gold-tier"` into concrete, quantifiable Service Level Agreement (SLA) metrics defined in its policy catalog:
+* **One-way latency:** $\le 20\text{ ms}$
+* **Jitter:** $\le 3\text{ ms}$
+* **Packet loss:** $0.00\%$
+* **Committed Information Rate (CIR):** $2\text{ Gbps}$ guaranteed, burstable to $5\text{ Gbps}$
+* **Availability:** $99.999\%$ (dual-homed hot-standby path required)
+
+
+
+
+3. **Pre-Deployment Verification (Mathematical Feasibility Check):**
+* Before pushing configurations, the engine simulates network state using a digital twin or formal verification model.
+* It checks whether the physical and virtual paths have sufficient bandwidth and latency margins to honor the requested SLA without starving other guaranteed services.
+
+
+
+---
+
+### Phase 2: Automated Activation & Policy Compilation
+
+1. **Mapping Intent to Flow Objectives:**
+* The compiled requirements pass to the SDN controller fabric (e.g., ONOS, Cisco DNA Spaces/Catalyst Center, or OpenDaylight), which converts mathematical constraints into device-level primitives.
+
+
+2. **Data-Plane Enforcement:**
+* **Traffic Classification & Marking:** Edge switches (Leaf/WAN edge) match packets by application signature (IP 5-tuple, DPI signature, or Layer 7 URI) and apply DiffServ markings (e.g., setting DSCP to `Expedited Forwarding / EF` or `AF41`).
+* **Queue Assignment:** Egress ports reserve a dedicated hardware queue with Strict Priority (SP) or Weighted Fair Queuing (WFQ) mapped to the $2\text{ Gbps}$ reservation.
+* **Path Provisioning:** The controller installs explicit traffic-engineered paths (using Segment Routing `SRv6` policy or MPLS-TE tunnels) that select optical/fiber routes optimized for minimum delay rather than simple hop counts.
+
+
+
+---
+
+### Phase 3: Continuous Assurance (Verification & Telemetry)
+
+1. **Real-Time Data-Plane Telemetry:**
+* The network continuously feeds real-time performance telemetry back to the IBN assurance engine using In-band Network Telemetry (INT), gNMI streaming telemetry, or sFlow/IPFIX.
+* Telemetry probes track exact hop-by-hop latency, queue depth, buffer drops, and end-to-end packet travel times for every tracking-application flow.
+
+
+2. **Continuous State Comparison:**
+* The assurance module constantly compares **Real-Time Network State** against **Original Expressed Intent**.
+* As long as packet loss is $0\%$ and latency stays under $20\text{ ms}$, the system flags the state as *Compliant*.
+
+
+
+---
+
+### Phase 4: Closed-Loop Automated Remediation (Self-Healing)
+
+1. **Drift Detection (Peak Season Congestion):**
+* During peak shipping weeks (e.g., Cyber Week), tracking transactions surge, causing buffer queues along the primary transit link to fill.
+* Telemetry detects latency creeping up to $23\text{ ms}$ and buffer drops approaching $0.05\%$, signaling an imminent SLA violation.
+
+
+2. **Autonomous Corrective Action:**
+* Without requiring human intervention or opening support tickets:
+* **Dynamic Path Recomputation:** The IBN optimization engine finds an underutilized alternate fiber path with an $11\text{ ms}$ propagation delay.
+* **Flow Redirection:** The SDN controller pushes updated Segment Routing labels or OpenFlow flow rules to steer the tracking application onto the clean secondary route in sub-seconds.
+* **Dynamic Rate-Limiting of Non-Critical Flows:** If total trunk bandwidth is constrained, the system lowers the priority queue weights for bulk logs and routine internal telemetry, preserving line-rate throughput for customer-facing tracking calls.
+
+
+
+
+3. **Loop Closure:**
+* Post-mitigation metrics confirm latency has dropped back to $12\text{ ms}$ with $0\%$ loss. The system logs the remediation event and marks the intent status as *Healthy and Preserved*.

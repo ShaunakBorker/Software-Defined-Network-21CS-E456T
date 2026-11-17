@@ -1,0 +1,148 @@
+SDN Worksheet Unit 3 Section 5
+### Question
+
+5. Simple NetApp using RYU (Application & Creation)
+Problem 5: You need to develop a simple SDN application using the RYU controller that acts as a basic "Learning Switch." Specifically, when a new packet (e.g., ARP or IP) arrives at a switch port and its destination MAC address is unknown, the application should:
+6. Learn the source MAC address and its associated input port on that switch.
+7. Then, flood the packet out of all other ports of that switch (except the incoming port).
+8. If the destination MAC is already known from a previous learning step, a flow rule should be installed to forward the packet directly to the learned output port, preventing future flooding for that flow.
+Outline the key logic, RYU event handlers, and necessary RYU functions you would use to implement this. You do not need to write full executable code, but clear pseudocode or a detailed description of the logic flow is required.
+
+---
+
+### Answer
+
+* **Key Ryu Event Handlers and Setup:**
+* **Switch Features Event (`EventOFPSwitchFeatures`):**
+* Triggered once when a switch first connects to Ryu.
+* Used to install a low-priority default "table-miss" flow rule so any unmatched packet is sent up to the controller as a `Packet-In`.
+
+
+* **Packet-In Event (`EventOFPPacketIn`):**
+* Triggered every time the switch forwards an unrecognized packet up to Ryu.
+* Contains the core learning and forwarding logic.
+
+
+
+
+* **Key Ryu Functions and Helpers:**
+* **`add_flow()`:** A custom helper function that builds an `OFPFlowMod` message to install a new forwarding rule into the switch's flow table.
+* **`packet.Packet(msg.data)`:** Parses the raw packet bytes to extract Layer 2 Ethernet headers (`src_mac`, `dst_mac`).
+* **`parser.OFPPacketOut()`:** Builds an instruction telling the switch to send the current packet out of one or more physical ports.
+* **`parser.OFPActionOutput()`:** Specifies the output port action (e.g., a specific port number, or the special port `OFPP_FLOOD`).
+
+
+* **Step-by-Step Logic Flow:**
+1. **Handle Initial Connection (Table-Miss Rule):**
+* In the switch features handler, create a rule matching all packets (`match = parser.OFPMatch()`).
+* Set the action to send packets to the controller (`OFPP_CONTROLLER`).
+* Push this rule with priority `0` using `OFPFlowMod`.
+
+
+2. **Extract Packet Details on Packet-In:**
+* Read the switch ID (`dpid = msg.datapath.id`), ingress port (`in_port = msg.match['in_port']`), and parse the Ethernet frame to get `src_mac` and `dst_mac`.
+
+
+3. **Step 1 — Learn Source MAC:**
+* Maintain an internal Python dictionary (`self.mac_to_port[dpid]`).
+* Save the incoming mapping:
+```text
+mac_to_port[dpid][src_mac] = in_port
+
+```
+
+
+
+
+4. **Step 2 & 3 — Check Destination MAC:**
+* **If Destination is Known:**
+* Look up the port: `out_port = mac_to_port[dpid][dst_mac]`.
+* Create a match rule for traffic going to that destination:
+```text
+match = parser.OFPMatch(in_port=in_port, eth_dst=dst_mac)
+
+```
+
+
+* Create an action pointing to `out_port`.
+* Install this flow rule on the switch with priority `1` and an idle timeout using `add_flow()`. Future packets will now skip the controller and forward at hardware speed.
+
+
+* **If Destination is Unknown:**
+* Set the output port to flood: `out_port = ofproto.OFPP_FLOOD`.
+* Do **not** install a flow rule.
+
+
+
+
+5. **Send the Initial Packet Out:**
+* Create an `OFPPacketOut` message containing the chosen action (`out_port`) and the packet data (or buffer ID).
+* Send it back to the switch to deliver the packet.
+
+
+
+
+* **High-Level Pseudocode:**
+
+```python
+class SimpleLearningSwitch(app_manager.RyuApp):
+    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+
+    def __init__(self, *args, **kwargs):
+        super(SimpleLearningSwitch, self).__init__(*args, **kwargs)
+        self.mac_to_port = {}  # {dpid: {mac: port}}
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        # Install table-miss flow rule: send unmatched packets to controller
+        match = datapath.ofproto_parser.OFPMatch()
+        actions = [datapath.ofproto_parser.OFPActionOutput(
+            datapath.ofproto.OFPP_CONTROLLER, datapath.ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, priority=0, match=match, actions=actions)
+
+    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    def packet_in_handler(self, ev):
+        msg = ev.msg
+        datapath = msg.datapath
+        dpid = datapath.id
+        in_port = msg.match['in_port']
+
+        # Parse Ethernet frame
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        src_mac = eth.src
+        dst_mac = eth.dst
+
+        # 1. Learn source MAC
+        self.mac_to_port.setdefault(dpid, {})
+        self.mac_to_port[dpid][src_mac] = in_port
+
+        # 2 & 3. Check destination
+        if dst_mac in self.mac_to_port[dpid]:
+            out_port = self.mac_to_port[dpid][dst_mac]
+            actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+            # Install flow rule to avoid future Packet-Ins
+            match = datapath.ofproto_parser.OFPMatch(in_port=in_port, eth_dst=dst_mac)
+            self.add_flow(datapath, priority=1, match=match, actions=actions)
+        else:
+            # Unknown destination: flood
+            out_port = datapath.ofproto.OFPP_FLOOD
+            actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+
+        # Forward the packet
+        out = datapath.ofproto_parser.OFPPacketOut(
+            datapath=datapath, buffer_id=msg.buffer_id,
+            in_port=in_port, actions=actions, data=msg.data)
+        datapath.send_msg(out)
+
+    def add_flow(self, datapath, priority, match, actions):
+        # Helper to push OFPFlowMod to the switch
+        inst = [datapath.ofproto_parser.OFPInstructionActions(
+            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = datapath.ofproto_parser.OFPFlowMod(
+            datapath=datapath, priority=priority,
+            match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+```

@@ -1,0 +1,32 @@
+SDN Worksheet Unit 1 Section 6
+### Question
+
+Scenario 6:
+A university's security system detects that a student's laptop at IP address 10.50.20.113 has been infected with malware and is attempting to scan other devices on the network. A rapid response is needed. Describe the immediate action a security application on a centralized SDN controller could take to quarantine the infected device.
+
+---
+
+### Answer
+
+Because the centralized SDN controller possesses a global view of the network and communicates directly with the physical and virtual switches, a security application running on top of it can execute an automated, instantaneous quarantine through the following immediate actions:
+
+* **Identify the Edge Switch Port:**
+* The security application queries the SDN controller’s global topology and host-tracking table using the infected IP address (`10.50.20.113`) to identify the exact switch and ingress port where the student's laptop is physically connected.
+
+
+* **Install High-Priority Drop Rules at the Ingress Switch (Port-Level Quarantine):**
+* The application pushes a high-priority flow rule directly to that specific ingress edge switch matching the source IP address (`10.50.20.113`) or source MAC address.
+* The associated action is set to `DROP`. By blocking the malicious traffic at the very first switch port before it ever enters the network fabric, the laptop is completely isolated from communicating with any other internal hosts or external gateways.
+
+
+* **Dynamic Traffic Redirection to a Quarantine / Remediation Honeynet (Alternative/Advanced Quarantine):**
+* Instead of outright dropping the packets, the security application can install flow rules that rewrite packet headers or output ports, redirecting all HTTP/HTTPS and scanning traffic from `10.50.20.113` to an isolated remediation captive portal or security honeypot.
+* This allows the student to see a notification explaining that malware was detected on their machine, providing remediation steps or antivirus download links while preventing access to the rest of the campus.
+
+
+* **Disable the Physical/Virtual Port:**
+* Using management southbound interfaces such as OpenFlow Port Status commands or OVSDB/OF-CONFIG, the controller can issue an administrative `PORT_DOWN` command to completely shut down the physical switch port connected to the compromised device.
+
+
+* **Publish Network-Wide Blacklist Rules:**
+* To guard against IP spoofing or immediate re-attachment to an adjacent port, the controller can simultaneously distribute proactive matching rules across all boundary switches to drop any outbound ARP, ICMP, and TCP/UDP traffic matching the device's MAC address across the entire campus network in milliseconds.

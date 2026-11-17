@@ -1,0 +1,95 @@
+SDN Worksheet Unit 5 Section 3
+An SDN-based access control system enforces this policy using **identity-driven microsegmentation** and **multi-attribute validation**. Instead of evaluating user credentials in isolation, the centralized SDN controller correlates network ingress points, device hardware identities, user credentials, and location context before programming any data-plane forwarding rules.
+
+---
+
+### 1. The Multi-Factor Policy Context
+
+The SDN policy engine evaluates access across four distinct verification criteria:
+
+| Parameter | Approved Requirement | Trader's Attempt (Scenario 12) | Compliance Verdict |
+| --- | --- | --- | --- |
+| **User Identity** | Trader Role (Active Directory / IAM) | Valid Trader Credentials | **PASS** |
+| **Device Posture** | Corporate-managed workstation with enterprise client certificate | Personal unmanaged laptop (no TPM / device cert) | **FAIL** |
+| **Network Location** | Office trading floor (wired access port or dedicated enterprise VLAN) | Guest Wi-Fi SSID / Untrusted guest segment | **FAIL** |
+| **Physical Ingress** | Designated physical switch port on the trading floor | Wireless Access Point (WAP) on Guest AP tunnel | **FAIL** |
+
+---
+
+### 2. Step-by-Step SDN Enforcement Workflow
+
+```
+[ Trader's Personal Laptop ]
+           |
+           | Associated with "Guest Wi-Fi"
+           v
+[ Wireless AP / Edge Switch ]
+           |
+           | Ingress Packet: (Src: Guest_IP, Dst: Trading_Platform_IP:PORT)
+           | Table-Miss (No active forwarding rule exists)
+           v
+[ OpenFlow / P4 Packet-In Event ]
+           |
+           v
++-------------------------------------------------------------------------+
+|                      SDN Controller & Policy Engine                     |
+|                                                                         |
+|  1. Identifies Ingress: Originating from Guest Wi-Fi Subnet / Port      |
+|  2. Queries AAA / NAC: Device lacks approved corporate 802.1X identity |
+|  3. Evaluates Policy Rule:                                              |
+|     IF Ingress != Trading_Floor_Port OR Device != Corporate_Workstation |
+|     THEN DENY access to Trading_Platform_IP                             |
+|  4. Action: Generate Reactive DROP Flow Rule                            |
++-------------------------------------------------------------------------+
+           |
+           | Southbound API (Install Flow Rule)
+           v
+[ Ingress Edge Switch / WAP ]
+           |
+           x  HARD DROP at line-rate in hardware (TCAM)
+              (Packet discarded; access to trading core is blocked)
+
+```
+
+1. **Ingress Association & Default-Deny State:**
+* The personal laptop associates with the Guest Wi-Fi network and is assigned an IP from the isolated guest pool (e.g., `172.16.50.0/24`).
+* In an SDN Zero Trust architecture, edge switches run a **default-deny** policy: no switch has pre-installed forwarding paths to the high-security trading platform subnet (`10.0.100.0/24`).
+
+
+2. **Triggering the Control Plane (`Packet-In`):**
+* The trader attempts to open a session to the trading platform (`IP_Trading:443`).
+* The edge switch encounters a **Table-Miss** and forwards the initial packet header to the SDN controller via an OpenFlow `Packet-In` message (or P4Runtime digest).
+
+
+3. **Contextual Evaluation at the Controller:**
+* The controller’s security NetApp intercepts the event and inspects the contextual metadata:
+* **Ingress Switch & Port ID:** Points to the Guest Access Point VLAN rather than the physical switch ports on the trading floor.
+* **Device Identity & Posture:** The controller checks with the enterprise Network Access Control (NAC) / RADIUS directory. The MAC address and TLS client certificate do not match any corporate-provisioned trader workstation.
+
+
+* The controller finds that while the user may have valid trader credentials, the **environmental and device context fails the access matrix**.
+
+
+4. **Line-Rate Enforcement at the Ingress Edge:**
+* The controller does not route the packet toward the core. Instead, it generates a reactive **`DROP`** flow rule and pushes it down via the Southbound interface to the edge switch:
+```text
+Table=0, Priority=200, 
+Match: in_port=Guest_WAP_Port, nw_src=172.16.50.88, nw_dst=10.0.100.0/24
+Action: DROP
+
+```
+
+
+* The edge switch drops the packet directly in hardware (TCAM). The malicious or non-compliant traffic is extinguished at the edge and never enters the trading network backbone.
+
+
+5. **Audit Logging and SIEM Alerting:**
+* The SDN controller logs an unauthorized access attempt containing the user ID, MAC address, switch port, and timestamp, instantly alerting the Security Operations Center (SOC) and Compliance team of a policy violation.
+
+
+
+---
+
+### 3. Key Takeaway
+
+By decoupling control logic from physical wiring, the SDN controller binds access permissions to **Device + Location + Role** simultaneously. Even if a user possesses valid login credentials, access to the trading platform remains physically and logically unreachable unless the traffic originates from an authenticated workstation patched into an authorized physical office port.

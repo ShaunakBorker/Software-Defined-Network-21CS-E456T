@@ -1,0 +1,37 @@
+SDN Worksheet Unit 2 Section 3
+### Question
+
+Scenario: A security team wants to rapidly quarantine a compromised host by isolating it from the rest of the network.
+Question: Describe how an SDN controller, leveraging OpenFlow, can achieve this rapid isolation without reconfiguring physical ports or VLANs.
+
+---
+
+### Answer
+
+An SDN controller leveraging OpenFlow can quarantine a compromised host in milliseconds at the software flow level, completely bypassing the need to log into individual switch CLIs, re-patch physical cables, or modify 802.1Q VLAN configurations.
+
+* **Identification and Host Tracking:**
+* Once the security team or an integrated intrusion detection system (IDS/SIEM) identifies the compromised host (via its IP or MAC address), the security application communicates the target identity to the SDN controller via a Northbound REST API.
+* The controller consults its global host-tracking table and topology database to identify the precise OpenFlow switch and ingress port where the compromised device is attached.
+
+
+* **Immediate Installation of High-Priority Drop Rules (`OFPT_FLOW_MOD`):**
+* The controller creates and pushes an `OFPT_FLOW_MOD` message directly to the flow table of the ingress switch.
+* **Match Criteria:** The rule matches on the compromised host's specific Layer 2/3 identifiers (e.g., `eth_src = <compromised_MAC>` or `ipv4_src = <compromised_IP>`).
+* **Action:** The action set is left empty (or explicitly specified as `DROP`).
+* **Priority Override:** The rule is assigned a higher priority (e.g., priority `65535`) than any existing standard forwarding or routing rules. Under OpenFlow, the switch evaluates flows based on priority order; the high-priority drop rule overrides all default forwarding logic, terminating all outbound communication from the host at the edge port before it can traverse the network fabric.
+
+
+* **Bidirectional Isolation (Inbound & Outbound Block):**
+* To completely seal off the host, the controller also installs a corresponding high-priority drop rule matching destination headers (e.g., `eth_dst = <compromised_MAC>` or `ipv4_dst = <compromised_IP>`).
+* This prevents the infected host from sending data, receiving incoming attack vectors, or communicating with local subnet neighbors (lateral movement/east-west infection).
+
+
+* **Purging Existing Active Flows:**
+* In addition to installing new drop rules, the controller issues an `OFPT_FLOW_MOD` command with the command field set to `OFPFC_DELETE` (Delete Flows).
+* This command instantly evicts any existing, active flow entries in the switch TCAM associated with that host's IP/MAC, ensuring that ongoing sessions (such as active command-and-control backdoors or data exfiltration streams) are terminated immediately rather than waiting for idle timeouts to elapse.
+
+
+* **Optional Captive Quarantine / Remediation Steering:**
+* If the security team prefers remediation over complete disconnection, the controller does not drop packets; instead, it installs a rewrite/redirect rule.
+* It pushes a flow rule that matches HTTP/HTTPS requests from the host and modifies the destination IP/port to route traffic exclusively to an isolated remediation web portal or forensic sandbox, allowing the user to clean the infection while barring access to all internal resources.

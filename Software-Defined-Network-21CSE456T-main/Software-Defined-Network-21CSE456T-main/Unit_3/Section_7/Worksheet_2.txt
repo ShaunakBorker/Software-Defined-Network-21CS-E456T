@@ -1,0 +1,163 @@
+SDN Worksheet Unit 3 Section 7
+### Question
+
+7. Deploy ONOS and Connect with Mininet (Practical)
+Problem 7: Outline the step-by-step procedure to deploy the ONOS controller on a Linux environment and then connect a simple Mininet topology to it. Include commands and expected outcomes for each significant step.
+
+---
+
+### Answer
+
+The easiest and most reliable way to run ONOS on modern Linux systems is using its official Docker container, paired with Mininet on the host.
+
+* **Prerequisites:**
+* A Linux environment (Ubuntu 20.04/22.04 LTS recommended).
+* Root or `sudo` privileges.
+* Docker and Mininet installed:
+```bash
+sudo apt update
+sudo apt install -y docker.io mininet openvswitch-switch
+sudo systemctl enable --now docker
+
+```
+
+
+
+
+
+---
+
+* **Step 1: Download and Run the ONOS Container**
+* **Command:**
+```bash
+sudo docker run -t -d --name onos -p 6653:6653 -p 8181:8181 -p 8101:8101 onosproject/onos:latest
+
+```
+
+
+* **What this does:**
+* Pulls and runs the ONOS image in the background.
+* Port `6653`: Standard OpenFlow port used by switches to connect.
+* Port `8181`: ONOS Web GUI and REST API interface.
+* Port `8101`: ONOS Apache Karaf CLI shell.
+
+
+* **Expected Outcome:** Docker returns a container ID string. Verifying with `sudo docker ps` shows the `onos` container with status `Up`.
+
+
+
+---
+
+* **Step 2: Verify ONOS Readiness and Web GUI Access**
+* **Command:**
+```bash
+# Check container logs until you see initialization finishes
+sudo docker logs -f onos
+
+```
+
+
+*(Press `Ctrl+C` to exit logs once boot messages finish.)*
+* **Access GUI:** Open a web browser on your host machine and navigate to:
+```text
+http://localhost:8181/onos/ui
+
+```
+
+
+*Default credentials:* Username: `onos`, Password: `rocks`.
+* **Expected Outcome:** The ONOS web dashboard loads with an empty topology map.
+
+
+
+---
+
+* **Step 3: Enable the Reactive Forwarding and OpenFlow Apps in ONOS**
+* *Context:* By default, ONOS acts as a passive controller. To make switches forward traffic automatically like a basic learning switch, we activate the OpenFlow base driver and the reactive forwarding (`fwd`) application.
+* **Command:**
+```bash
+# Open the ONOS Karaf CLI
+ssh -p 8101 -o StrictHostKeyChecking=no onos@localhost
+# Password: rocks
+
+```
+
+
+Inside the ONOS CLI prompt (`onos>`):
+```text
+app activate org.onosproject.openflow
+app activate org.onosproject.fwd
+logout
+
+```
+
+
+* **Expected Outcome:** The CLI prints `Activated org.onosproject.openflow` and `Activated org.onosproject.fwd`.
+
+
+
+---
+
+* **Step 4: Launch Mininet and Connect to ONOS**
+* **Command:**
+```bash
+# Clean any leftover Mininet state first
+sudo mn -c
+
+# Start a simple tree topology: 1 switch (s1), 2 hosts (h1, h2)
+sudo mn --topo single,2 --mac --controller remote,ip=127.0.0.1,port=6653 --switch ovsk,protocols=OpenFlow13
+
+```
+
+
+* **What this does:**
+* Creates virtual switch `s1` and connects two hosts (`h1` at `10.0.0.1`, `h2` at `10.0.0.2`).
+* Directs the switch to connect to our local ONOS controller listening on port `6653` using the modern OpenFlow 1.3 protocol.
+
+
+* **Expected Outcome:** Mininet builds the topology, connects to the controller, and drops you into the `mininet>` prompt without connection refusal errors.
+
+
+
+---
+
+* **Step 5: Test End-to-End Connectivity**
+* **Command (inside Mininet prompt):**
+```text
+mininet> pingall
+
+```
+
+
+* **Expected Outcome:**
+```text
+*** Ping: testing ping reachability
+h1 -> h2 
+h2 -> h1 
+*** Results: 0% dropped (2/2 received)
+
+```
+
+
+Because the `org.onosproject.fwd` application is enabled, ONOS receives the initial packet misses, computes shortest paths, and pushes reactive flow rules down to the virtual switch.
+
+
+
+---
+
+* **Step 6: Confirm the Topology and Flow Rules in ONOS**
+* **Command (from host terminal):**
+```bash
+# Inspect connected devices
+ssh -p 8101 -o StrictHostKeyChecking=no onos@localhost "devices"
+
+# Inspect installed flow rules
+ssh -p 8101 -o StrictHostKeyChecking=no onos@localhost "flows"
+
+```
+
+
+* **Expected Outcome:**
+* `devices` lists `of:0000000000000001` with `available=true`.
+* `flows` displays installed OpenFlow 1.3 rules with state `ADDED` for ports connecting `h1` and `h2`.
+* In the Web GUI (`http://localhost:8181/onos/ui`), the switch and both connected host icons appear on the graphical canvas.

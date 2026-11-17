@@ -1,0 +1,28 @@
+### Question
+
+Scenario 13:
+A student needs to run a performance test between two hosts, h1 and h2, in Mininet. They need to start a server on h2 and a client on h1 to measure bandwidth. What Mininet CLI command would they use to open separate terminal windows for h1 and h2 to run these commands?
+
+---
+
+### Answer
+
+To open separate interactive terminal windows for hosts `h1` and `h2`, the student should run the `xterm` command inside the Mininet CLI (`mininet>`):
+
+```bash
+xterm h1 h2
+
+```
+
+* **Command Breakdown:**
+* `xterm`: The Mininet command that spawns X11-based graphical terminal windows connected to the private network namespaces of the specified virtual nodes.
+* `h1 h2`: The specific target hosts. Mininet accepts multiple host names separated by spaces, launching an individual terminal window for each.
+
+
+* **Usage in the Opened Terminals:**
+* In the **h2** terminal, start the server (e.g., `iperf -s`).
+* In the **h1** terminal, run the client pointing to h2's IP address (e.g., `iperf -c 10.0.0.2`).
+
+
+* **Prerequisite Note:**
+* X11 forwarding must be enabled (such as passing the `-X` or `-Y` flag when connecting via SSH, e.g., `ssh -X mininet@<ip>`) and an active X server (like XQuartz on macOS or VcXsrv/Xming on Windows) must be running on the host machine.

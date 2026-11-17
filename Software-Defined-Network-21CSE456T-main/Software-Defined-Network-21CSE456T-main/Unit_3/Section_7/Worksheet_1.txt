@@ -1,0 +1,47 @@
+SDN Worksheet Unit 3 Section 7
+### Question
+
+7. ONOS Architecture (Understanding & Analysis)
+Problem 7: Describe the core architectural components of the ONOS (Open Network Operating System) controller, particularly focusing on its modular nature (e.g., OSGi framework, core services, North/Southbound interfaces). Explain how this modularity benefits extensibility and system stability.
+
+---
+
+### Answer
+
+ONOS is designed as an open-source, carrier-grade network operating system. It avoids monolithic software design by using a layered, modular architecture where every major feature is an independent, hot-swappable module.
+
+* **Core Architectural Components of ONOS:**
+* **OSGi Framework (Apache Karaf):**
+* **What it is:** The underlying Java runtime container that manages modules (called "bundles").
+* **Role:** It allows developers to load, start, stop, update, or uninstall applications and protocol drivers on the fly without rebooting the controller or interrupting running network traffic.
+
+
+* **Core Services (The Distributed Core Engine):**
+* **Network Graph & Topology Store:** Maintains a live, complete view of all switches, ports, links, and hosts across the network.
+* **Distributed State Stores (Atomix / Raft):** Replicates network state across clustered ONOS nodes so that if one server fails, another takes over instantly without losing flow state.
+* **Intent Framework:** A key subsystem that lets apps specify high-level policy goals (e.g., "connect Host A to Host B with bandwidth guarantee X") without worrying about low-level switch rules. The core compiles intents into concrete path rules automatically.
+* **Device, Link, and Host Managers:** Subsystems that track the lifecycle and health of all network entities.
+
+
+* **Northbound Interfaces (Upper APIs):**
+* **Role:** The communication bridge between the ONOS core and external network applications.
+* **Mechanisms:** Exposes RESTful APIs, CLI tools, and native Java APIs (such as the Intent Framework API). Applications tell ONOS what network behavior they want without dealing with switch-specific protocols.
+
+
+* **Southbound Interfaces & Providers/Drivers (Lower APIs):**
+* **Role:** The communication bridge between the ONOS core and the physical or virtual data plane devices.
+* **Pluggable Drivers:** Uses a provider abstraction layer to talk different protocols simultaneously—such as OpenFlow, NETCONF, P4Runtime, OVSDB, and gNMI. The core treats all devices uniformly, while the drivers handle the device-specific translation.
+
+
+
+
+* **How Modularity Benefits Extensibility:**
+* **Zero-Downtime Feature Additions:** Developers can deploy a brand-new routing algorithm, monitoring tool, or protocol driver by simply loading an OSGi bundle into the running controller via CLI or REST API.
+* **Protocol Agnostic Hardware Support:** Adding support for a new switch hardware model or protocol (e.g., P4 instead of OpenFlow) only requires writing a new southbound provider driver—the core services and user applications remain completely unchanged.
+* **Decoupled Application Logic:** App developers build on top of high-level Core APIs (like the Intent Framework) rather than coding directly against low-level switch hardware primitives.
+
+
+* **How Modularity Benefits System Stability:**
+* **Fault Isolation:** Because modules run with cleanly defined boundaries and decoupled dependency injection, a bug or crash in an optional application (like a traffic statistics tool) does not crash the entire operating system or bring down the control plane.
+* **Safe Live Upgrades:** Bug fixes and performance patches can be deployed to individual bundles in production without taking down the cluster, preserving continuous carrier-grade uptime (99.999% availability).
+* **Clean Separation of Concerns:** Core cluster synchronization and consensus algorithms are completely separate from device drivers and application logic, preventing application developers from accidentally corrupting the underlying cluster state.

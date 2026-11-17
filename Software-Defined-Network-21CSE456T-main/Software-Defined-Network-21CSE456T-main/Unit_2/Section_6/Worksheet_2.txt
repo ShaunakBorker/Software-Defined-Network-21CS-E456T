@@ -1,0 +1,33 @@
+SDN Worksheet Unit 2 Section 6
+### Question
+
+Scenario: A network developer is using the Floodlight controller and wants to create a simple application that monitors bandwidth usage on specific ports and sends an alert if usage exceeds a threshold.
+Question: What Floodlight API mechanism would the developer most likely use to register for port statistics updates from the switches?
+
+---
+
+### Answer
+
+To monitor port bandwidth and receive statistics updates, the developer would primarily use the **Statistics Service API (`IStatisticsService`)** or Floodlight's **Switch Listener / Message Listener mechanisms** depending on whether they are developing an internal Java module or an external Northbound application:
+
+* **Internal Controller Module Approach (`IStatisticsService`):**
+* Floodlight includes a built-in statistics collection module that implements the **`IStatisticsService`** interface.
+* Rather than manually crafting raw OpenFlow statistics requests, an application can depend on `IStatisticsService` (retrieved via `getServiceImplsAnnotation()` / `FloodlightModuleContext`).
+* The service periodically queries switches for port statistics, calculates transmit/receive data rates (in bits/sec) using timestamp differences, and exposes methods such as **`getBandwidthConsumption(DatapathId dpid, OFPort p)`**.
+* A developer can schedule a periodic task (or monitor this service) to evaluate the returned `SwitchPortBandwidth` values against their alert threshold.
+
+
+* **Direct OpenFlow Event-Listening Approach (`IOFMessageListener`):**
+* If building custom collection logic from scratch, the developer implements the **`IOFMessageListener`** interface and registers with the controller's core provider (`IFloodlightProviderService.addOFMessageListener()`).
+* The module listens specifically for **`OFType.STATS_REPLY`** (or **`OFType.MULTIPART_REPLY`** in OpenFlow 1.3+) containing port statistics descriptions (`OFStatsType.PORT` / `OFPortStatsReply`).
+* The developer schedules periodic **`OFStatsRequest`** / **`OFPortStatsRequest`** messages to the target switch (`IOFSwitch.write()`), and the listener parses the incoming reply counters (RX/TX bytes and packet counts) to compute bandwidth consumption.
+
+
+* **External Northbound REST API Approach:**
+* For an external script or monitoring dashboard (e.g., written in Python), Floodlight exposes the Statistics Module via its **Northbound REST API**.
+* The developer queries endpoints such as:
+* `/wm/statistics/bandwidth/<switchId>/<portId>/json` (to retrieve pre-computed RX/TX bandwidth consumption)
+* `/wm/core/switch/<switchId>/port/json` (to retrieve raw port counter statistics)
+
+
+* The external application polls this REST endpoint at regular intervals and raises an alert when the consumption exceeds the configured threshold.

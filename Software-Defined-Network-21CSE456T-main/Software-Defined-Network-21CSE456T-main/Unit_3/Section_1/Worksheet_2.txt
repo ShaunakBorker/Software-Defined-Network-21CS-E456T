@@ -1,0 +1,33 @@
+SDN Worksheet Unit 3 Section 1
+* **Deployment Model:**
+* **Traditional (PNFs):** Requires manual hardware racking, physical cabling, and per-device port configuration for every dedicated appliance.
+* **NFV (VNFs):** Deployed as software instances (virtual machines or containers) on shared compute nodes via automated orchestrators.
+
+
+* **Hardware Reliance:**
+* **Traditional (PNFs):** Tightly coupled to vendor-specific, proprietary ASICs and specialized chassis; software cannot run outside that vendor's hardware.
+* **NFV (VNFs):** Completely decoupled from underlying hardware; runs on standardized Commercial Off-The-Shelf (COTS) x86 servers and commodity storage.
+
+
+* **Scalability:**
+* **Traditional (PNFs):** Limited to rigid vertical scaling (scale-up); expanding capacity requires purchasing, shipping, and installing additional physical boxes.
+* **NFV (VNFs):** Elastic horizontal scaling (scale-out/scale-in); resources expand or contract dynamically in software based on real-time traffic demand.
+
+
+* **Cost Structure:**
+* **Traditional (PNFs):** High upfront CapEx for specialized appliances, paired with high ongoing OpEx for dedicated rack space, power, cooling, and manual on-site maintenance.
+* **NFV (VNFs):** Lower CapEx through shared, multi-tenant commodity servers; lower OpEx via centralized lifecycle management, automation, and reduced footprint.
+
+
+* **Agility & Time-to-Market:**
+* **Traditional (PNFs):** Slow service delivery; introducing a new network service typically takes weeks to months due to procurement lead times and manual deployment.
+* **NFV (VNFs):** Near-instantaneous service velocity; new functions, policy updates, and patches deploy programmatically in minutes.
+
+
+* **Fault Tolerance & Redundancy:**
+* **Traditional (PNFs):** Relies on costly, idle hardware redundancy ($1+1$ or $N+1$ physical spare appliances sitting in racks).
+* **NFV (VNFs):** Handled via software orchestration; instances quickly restart, snapshot, migrate, or failover across generic cluster nodes with minimal disruption.
+
+
+* **Most Impactful Difference for Network Operators:**
+* **Decoupling Innovation from Physical Hardware:** Operators transition from slow, expensive, multi-month hardware procurement cycles to fully automated, software-driven service delivery—allowing them to deploy, scale, and decommission carrier-grade services on demand without physical truck rolls or vendor hardware lock-in.

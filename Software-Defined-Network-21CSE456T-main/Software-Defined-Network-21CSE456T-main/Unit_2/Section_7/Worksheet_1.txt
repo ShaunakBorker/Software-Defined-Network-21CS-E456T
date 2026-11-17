@@ -1,0 +1,49 @@
+SDN Worksheet Unit 2 Section 7
+### Question
+
+Scenario: A network engineer is debugging a connectivity issue in an OpenFlow network. They suspect that a switch is not receiving the correct flow rules from the controller.
+Question: What OpenFlow message types would be most relevant for the controller to send to the switch and for the switch to send back to the controller in a normal operational state, and how would these messages help in debugging?
+
+---
+
+### Answer
+
+When debugging whether a switch is receiving, accepting, and installing the intended flow entries, several OpenFlow message types exchanged between the controller and the switch serve as primary diagnostic points.
+
+* **Controller-to-Switch Messages:**
+* **`OFPT_FLOW_MOD` (Flow Modification):**
+* *Purpose:* The fundamental instruction used by the controller to add, modify, or delete entries in the switch's flow tables.
+* *Debugging Utility:* Capturing this message (via Wireshark or controller debug logs) allows the engineer to inspect the exact match criteria (IP, MAC, TCP/UDP ports), action sets (output port, drop, push/pop tags), priority levels, and timeout values being pushed down. It verifies whether the controller is actually computing and attempting to install the correct rules.
+
+
+* **`OFPT_MULTIPART_REQUEST` / `OFPT_STATS_REQUEST` (specifically `OFPST_FLOW` / Flow Stats Request):**
+* *Purpose:* The controller queries the switch to read out its currently installed flow tables and runtime counters.
+* *Debugging Utility:* Proves whether the controller is actively verifying table contents. It triggers the switch to return the authoritative ground truth of what exists in hardware memory.
+
+
+* **`OFPT_BARRIER_REQUEST`:**
+* *Purpose:* Instructs the switch to finish processing all prior OpenFlow messages (including pending `FLOW_MOD` operations) before executing any subsequent operations.
+* *Debugging Utility:* Helps diagnose race conditions and ordering bugs. In debugging, pairing a `FLOW_MOD` with a `BARRIER_REQUEST` ensures the controller gets confirmation of when an entry has finished committing to switch hardware.
+
+
+
+
+* **Switch-to-Controller Messages:**
+* **`OFPT_MULTIPART_REPLY` / `OFPT_STATS_REPLY` (Flow Stats Reply):**
+* *Purpose:* The switch returns its complete list of active flow entries along with per-flow packet counters, byte counters, and flow duration.
+* *Debugging Utility:* Crucial for confirmation. Comparing the contents of this reply against the controller’s intended configuration confirms whether the `FLOW_MOD` was actually installed. If the rule is present, the packet and byte counters reveal whether incoming data traffic is hitting the rule or skipping it (e.g., due to a priority conflict or mismatch in packet headers).
+
+
+* **`OFPT_ERROR`:**
+* *Purpose:* Generated automatically by the switch when an incoming controller message cannot be parsed, contains unsupported actions, or encounters resource constraints.
+* *Debugging Utility:* If a switch fails to install a flow rule sent in a `FLOW_MOD`, it responds with an `OFPT_ERROR` message containing a specific error type and code (e.g., `OFPET_FLOW_MOD_FAILED`, `OFPFMFC_TABLE_FULL`, `OFPET_BAD_ACTION`, or `OFPET_BAD_MATCH`). This pinpointed error instantly tells the engineer why the switch rejected the instruction (such as full TCAM tables or unsupported header matching).
+
+
+* **`OFPT_BARRIER_REPLY`:**
+* *Purpose:* Sent by the switch back to the controller once all state changes prior to the `BARRIER_REQUEST` have been successfully committed.
+* *Debugging Utility:* Confirms that the switch has processed the preceding flow modifications and that there are no synchronization delays between control plane intent and data plane readiness.
+
+
+* **`OFPT_PACKET_IN`:**
+* *Purpose:* Sent by the switch when incoming packets trigger a table-miss or explicitly match an action directing packets to the controller (`OFPP_CONTROLLER`).
+* *Debugging Utility:* If the switch continuously sends `PACKET_IN` messages for the same stream, it indicates that either no matching flow rule was installed, or the installed rule had faulty match fields that failed to intercept the stream, forcing packets to repeatedly default to the controller.

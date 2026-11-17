@@ -1,0 +1,29 @@
+SDN Worksheet Unit 1 Section 5
+### Question
+
+Scenario 14:
+A researcher needs to simulate a network with a specific bandwidth limitation. They want the link between host h1 and switch s1 to be limited to 10 Mbps. How would they specify this link parameter when starting Mininet from the command line?
+
+---
+
+### Answer
+
+To limit the bandwidth of links from the command line, the researcher must instruct Mininet to use Traffic Control (`TCLink`) and specify the bandwidth parameter via the `--link` flag.
+
+* **Standard Topology Example (Minimal / Single Topology):**
+When starting a standard single-switch topology where `h1` connects to `s1`, run:
+```bash
+sudo mn --link tc,bw=10
+
+```
+
+
+* **Command Breakdown:**
+* `sudo mn`: Starts Mininet with root privileges.
+* `--link tc`: Directs Mininet to use `TCLink` (Linux Traffic Control), which enables traffic shaping parameters like bandwidth, delay, and packet loss.
+* `bw=10`: Sets the bandwidth limit for the links to **10 Mbps**.
+
+
+* **Note for Heterogeneous/Per-Link Constraints:**
+* The `--link tc,bw=10` command-line argument applies the 10 Mbps limit to all links defined by the default CLI topology (including the link between `h1` and `s1`).
+* If the researcher needs **only** the link between `h1` and `s1` to be limited to 10 Mbps while leaving other links unrestricted, this is typically done using a custom Python script with `self.addLink(h1, s1, bw=10)`.

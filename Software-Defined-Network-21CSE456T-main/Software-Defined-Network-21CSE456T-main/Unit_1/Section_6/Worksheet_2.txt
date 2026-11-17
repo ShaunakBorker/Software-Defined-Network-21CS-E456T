@@ -1,0 +1,21 @@
+SDN Worksheet Unit 1 Section 6
+### Question
+
+Scenario 15:
+A student is writing a custom Python script to create a data center topology. They have added two switches, s1 and s2, to their topology object (self). What line of Python code using the Mininet API would they write to create a connection between these two switches?
+
+---
+
+### Answer
+
+To connect the two switches using the Mininet custom topology API (inside a class subclassing `mininet.topo.Topo`), the student would write:
+
+```python
+self.addLink(s1, s2)
+
+```
+
+* **Line Breakdown:**
+* `self`: Refers to the current topology instance (a subclass of `Topo`).
+* `addLink(...)`: The Mininet API method used to create a bi-directional virtual link between two network nodes.
+* `s1, s2`: The node objects (or string names) representing the two switches being interconnected.

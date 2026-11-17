@@ -1,0 +1,39 @@
+SDN Worksheet Unit 5 Section 1
+### Recommendation: **Ryu SDN Controller**
+
+---
+
+### Justification
+
+* **Python-Native Architecture (Low Learning Curve & Rapid Prototyping):**
+* Ryu is written entirely in Python, making it vastly simpler to learn, read, and modify compared to heavyweight, Java-based enterprise platforms like ONOS or OpenDaylight.
+* For academic research and student-led experiments, students can draft, test, and debug novel routing protocols or security apps in a few dozen lines of clean Python code without dealing with complex OSGi bundles, Maven compilation, or JVM tuning.
+
+
+* **Broad and Rigorous OpenFlow Support:**
+* Ryu natively supports all versions of the OpenFlow specification (**OpenFlow 1.0, 1.2, 1.3, 1.4, and 1.5**), along with **Nicira Extensions** and **NETCONF/OF-Config**.
+* Most legacy and low-cost lab switches operate on specific OpenFlow sub-versions; Ryu allows researchers to test backward-compatible features and multi-table pipelines across varying hardware without protocol mismatch issues.
+
+
+* **Zero-Budget Simulation and Tooling Integration:**
+* Pairs seamlessly with **Mininet**, allowing students to emulate complex, multi-switch topologies, link delays, and packet loss on a single, inexpensive desktop or student laptop.
+* Research code developed in Mininet + Ryu translates directly to real physical white-box switches with zero modifications.
+
+
+* **Event-Driven, Modular Framework:**
+* Ryu provides a clean, event-driven programming model using `gevent` coroutines (greenlets).
+* Researchers can listen for specific packet events (e.g., `EventOFPPacketIn`, `EventOFPPortStatus`) and inject custom logic or experimental headers effortlessly.
+
+
+* **Active Academic & Open-Source Community:**
+* Ryu has maintained extensive adoption across university networking labs and academic literature worldwide.
+* Abundant open-source code repositories, tutorial labs, and community-documented implementations exist for standard tasks (learning switches, STP, firewalls, and QoS meters), providing immediate reference material for students.
+
+
+
+---
+
+### Alternative Consideration: When to Choose an Alternative
+
+* **Choose ONOS instead if:** The lab's primary research scope focuses strictly on carrier-grade clustering, distributed state synchronization, or P4-programmable data planes (via P4Runtime/BMv2). However, ONOS carries a much steeper learning curve and higher hardware RAM/CPU overhead.
+* **Choose Ryu for:** General SDN experimentation, algorithmic routing research, custom packet processing, and rapid student coursework on limited computing budgets.

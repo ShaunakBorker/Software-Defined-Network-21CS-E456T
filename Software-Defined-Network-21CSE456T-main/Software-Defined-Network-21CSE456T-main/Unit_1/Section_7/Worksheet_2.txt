@@ -1,0 +1,50 @@
+SDN Worksheet Unit 1 Section 7
+### Question
+
+Scenario 17:
+An online gaming company wants to ensure that game traffic for its premium users is routed through the lowest-latency path in their network, while standard user traffic can take a slightly longer but less congested path. How would a proactive SDN controller implement this policy? Describe the type of flow rule it would install.
+
+---
+
+### Answer
+
+In a proactive SDN architecture, the controller pre-calculates network paths and installs flow entries into switch flow tables ahead of time, ensuring traffic is immediately classified and forwarded without incurring packet-in delays to the controller.
+
+* **Topology and Latency Discovery:**
+* The SDN controller continuously monitors the entire network topology and measures per-link latency and congestion in real time using protocols like LLDP (Link Layer Discovery Protocol) alongside active probing or in-band telemetry (INT).
+* Using these metrics, the controller calculates two distinct sets of forwarding paths:
+* A **lowest-latency path** (e.g., shortest propagation delay links, high-speed fiber routes) reserved for premium subscribers.
+* A **secondary, high-throughput path** (slightly higher delay, but ample bandwidth) allocated for standard users.
+
+
+
+
+* **User Identification and Traffic Classification:**
+* The controller maps users into tiers based on classification attributes:
+* **Layer 3 / Layer 4 match criteria:** Premium subscriber IP ranges/subnets or dedicated gaming server port numbers.
+* **Tag-based markers:** Differentiated Services Code Point (DSCP) values in the IP header or custom VLAN/VXLAN tags applied at the ingress edge switch.
+
+
+
+
+* **Description of Proactive Flow Rules Installed:**
+* **On Ingress Edge Switches:**
+* **Premium Rule:** Matches traffic from premium source IP addresses (or marked DSCP bits) targeting gaming server ports.
+* *Action:* Sets an output port directing traffic out the specific interface corresponding to the computed lowest-latency path, and optionally applies QoS queue mapping (e.g., assigning to a strict-priority hardware queue with `set_queue`).
+
+
+* **Standard Rule:** Matches general user subnets or default gaming traffic.
+* *Action:* Directs packets to an egress port leading to the alternate, standard path.
+
+
+
+
+* **On Intermediate Core Switches:**
+* Forwarding rules are proactively pre-installed along both paths. Core switches simply match on the incoming port, destination IP, or packet priority tag/VLAN ID and immediately output the packet to the next hop with no timeout (idle/hard timeout set to 0 for persistent rules).
+
+
+
+
+* **Dynamic Re-computation & Failover:**
+* Because the deployment is proactive, the rules remain active in switch TCAMs, allowing line-rate forwarding with zero setup latency for new game sessions.
+* If the controller detects latency degradation or a link failure on the premium route, it proactively updates the forwarding entries across the affected switches to switchover to the next best low-latency path.

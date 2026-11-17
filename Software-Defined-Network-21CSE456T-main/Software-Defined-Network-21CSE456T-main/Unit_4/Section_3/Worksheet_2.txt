@@ -1,0 +1,92 @@
+SDN Worksheet Unit 4 Section 3
+### Case Study – 2 (SLO-2): Applying Network Slicing Using SDN and NFV
+
+---
+
+### a) Architecture Used to Implement Network Slicing in this Scenario
+
+The smart city architecture is organized into four integrated layers operating over a shared physical infrastructure:
+
+* **Physical Infrastructure Layer (Underlay):**
+* **Access (RAN):** 5G/6G base stations (gNodeBs) equipped with multi-beam antennas that cover city streets, hospitals, and transit hubs.
+* **Transport:** High-capacity fiber optics and SDN-controlled switches connecting roadside towers to data centers.
+* **Compute & Storage:** Distributed server pools located at the network edge (MEC nodes on street cabinets/cell sites) and centralized municipal cloud data centers.
+
+
+* **Virtualized Infrastructure Layer (NFVI):**
+* Uses hypervisors and container engines (e.g., KVM, Docker, Kubernetes) to turn physical compute, storage, and networking hardware into shared, flexible resource pools.
+* Fast virtual switching (such as Open vSwitch with DPDK) handles high-speed packet forwarding directly inside servers.
+
+
+* **Network Slices Layer (Logical Overlays):**
+* **Public Safety & Emergency Services Slice (URLLC):**
+* **Profile:** Guaranteed sub-millisecond latency, preemption priority, and 99.999% uptime.
+* **Placement:** Core user-plane functions (UPF) and emergency dispatch apps run directly on local Edge MEC nodes near dispatch centers and ambulances to avoid long-distance routing delays.
+
+
+* **Smart Healthcare Slice (URLLC + eMBB):**
+* **Profile:** Low latency combined with sustained high bandwidth for real-time robotic surgery and high-resolution imaging transfers.
+* **Placement:** Hybrid deployment using hospital edge servers for tactile controls and private cloud storage for patient records.
+
+
+* **Smart Transportation Slice (V2X / URLLC):**
+* **Profile:** Low latency and high mobility support for connected vehicles, traffic signals, and automated transit systems.
+
+
+* **Public Wi-Fi Slice (Best-Effort eMBB):**
+* **Profile:** Flexible, burstable bandwidth without strict latency guarantees.
+* **Placement:** Routed to regional/central data centers; bandwidth can be dynamically throttled during major city emergencies.
+
+
+
+
+* **Management, Orchestration, and Control Layer (MANO & SDN):**
+* **NFV Orchestrator (NFVO / NSMF):** The central system that translates municipal service requests into virtual instances and maps them across edge and central servers.
+* **SDN Controller Fabric:** Dynamically programs transport switches and virtual switches to establish isolated network paths between base stations and slice functions.
+
+
+
+---
+
+### b) How SDN and NFV Help in Slice Creation, Isolation, and Management
+
+* **1. Slice Creation:**
+* **NFV (On-Demand Function Instantiation):**
+* When the city needs a new slice (e.g., a temporary emergency response slice for a major event), NFV spins up the required Virtual Network Functions (VNFs) or Containerized Network Functions (CNFs)—such as packet gateways, firewalls, and session managers—in minutes on generic servers.
+
+
+* **SDN (Automated End-to-End Connectivity):**
+* As soon as those virtual functions are running, the SDN controller automatically programs the forwarding tables on physical and virtual switches.
+* It sets up dedicated traffic tunnels (like VXLAN or Segment Routing paths) connecting the cell towers directly to the newly created slice functions without manual cabling.
+
+
+
+
+* **2. Slice Isolation:**
+* **Traffic & Control Plane Isolation (via SDN):**
+* The SDN controller enforces strict packet-matching rules using flow tags and VLAN/VNI IDs.
+* Traffic from public Wi-Fi users is physically kept separate from emergency services; public Wi-Fi packets cannot cross into the emergency slice's flow tables.
+
+
+* **Resource & Compute Isolation (via NFV):**
+* NFV uses hypervisor and container controls (cgroups, dedicated CPU pinning, and memory reservation) to lock down compute capacity.
+* If public Wi-Fi usage spikes dramatically, it cannot consume the CPU, RAM, or storage reserved for the healthcare and emergency VNFs.
+
+
+* **QoS and Traffic Preemption (via SDN):**
+* The SDN controller configures priority queues on switches. If network congestion occurs, the switches immediately drop or rate-limit public Wi-Fi traffic while giving emergency vehicles absolute priority forwarding.
+
+
+
+
+* **3. Slice Management:**
+* **Dynamic Scaling:**
+* If an incident occurs (such as a multi-vehicle accident), telemetry alerts the NFV orchestrator to scale up the emergency slice automatically by spinning up more processing instances at the nearest edge node.
+
+
+* **Real-Time Traffic Steering:**
+* If a primary fiber link in the city is severed, the SDN controller detects the failure within milliseconds and dynamically shifts the emergency slice's flows onto alternate paths, maintaining uninterrupted service.
+
+
+* **Automated Lifecycle & Decommissioning:**
+* Once a temporary event or emergency operation ends, the orchestrator tears down the temporary virtual functions, while the SDN controller removes the associated flow rules, returning the compute and network resources back to the general municipal pool.

@@ -1,0 +1,22 @@
+SDN Worksheet Unit 1 Section 9
+### Question
+
+Category: Implementation & Operations in Mininet
+Scenario 9:
+A student is tasked with creating a simple network topology for a lab assignment: one switch connected to four hosts. What single Mininet command-line instruction would create this topology and verify that all hosts can communicate with each other?
+
+---
+
+### Answer
+
+To create a single-switch topology with four hosts and immediately test reachability among all of them in one command, execute:
+
+```bash
+sudo mn --topo single,4 --test pingall
+
+```
+
+* **Command Breakdown:**
+* `sudo mn`: Launches Mininet with required root privileges.
+* `--topo single,4`: Builds a star topology with one switch (`s1`) connected to four hosts (`h1`, `h2`, `h3`, `h4`).
+* `--test pingall`: Automatically runs an all-pairs ping test across all four hosts once the network initializes, prints the dropped packet percentage, and cleanly exits the simulation.

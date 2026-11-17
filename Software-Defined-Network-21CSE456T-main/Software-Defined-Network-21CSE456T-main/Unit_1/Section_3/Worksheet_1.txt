@@ -1,0 +1,34 @@
+### Question
+
+Scenario 3:
+A university needs to change firewall rules for its computer science lab to allow access to a new cloud-based programming tool. The network administrator has to submit a change request, wait for a maintenance window, and then manually SSH into five different routers in the path to update their access control lists (ACLs). Contrast this traditional process with how the same task would be accomplished in an SDN-powered campus network.
+
+---
+
+### Answer
+
+In a traditional campus network, network management is distributed and device-centric, whereas in an SDN-powered network, management is centralized, programmatic, and policy-driven. The contrast between both approaches covers several key areas:
+
+* **Point of Configuration:**
+* **Traditional:** The network administrator must manually SSH into each of the five routers individually, configuring hop-by-hop Access Control Lists (ACLs) on each device's command line.
+* **SDN:** The policy is defined once at the centralized SDN controller through a graphical interface, dashboard, or REST API call.
+
+
+* **Automation and Execution:**
+* **Traditional:** Rules are entered manually, requiring repetitive commands across potentially heterogeneous router hardware with differing syntax. This introduces high risk for syntax mismatches and human error.
+* **SDN:** The controller uses its global network view to translate the high-level policy into low-level forwarding/filtering rules. It automatically pushes these rules simultaneously to all relevant data-plane switches and routers using southbound protocols (like OpenFlow or NETCONF).
+
+
+* **Deployment Speed and Downtime:**
+* **Traditional:** The process takes days to weeks because it requires formal change request approvals, coordination, and waiting for an off-hours maintenance window to avoid disruptions.
+* **SDN:** Policy changes can be applied instantaneously and dynamically during normal operating hours without service interruptions, reducing implementation time from days to seconds.
+
+
+* **Consistency and Security:**
+* **Traditional:** Any missed router, misconfigured rule sequence, or typo in an ACL can create asymmetric traffic drops or major security loopholes across the path.
+* **SDN:** The controller applies intent-based policies uniformly across the entire path. Because the controller maintains the global state of the network, it validates consistency before deployment to eliminate configuration drift.
+
+
+* **Verification and Rollback:**
+* **Traditional:** The administrator must manually verify traffic flow through each device; reverting a flawed change requires logging back into all five routers to remove the applied commands.
+* **SDN:** Network behavior can be verified through automated controller diagnostics, and any problematic change can be rolled back across the entire network immediately with a single command or API trigger.

@@ -1,0 +1,67 @@
+SDN Worksheet Unit 4 Section 2
+### Case Study – 2 (SLO-2): Applying Advanced Security Mechanisms in 6G Networks
+
+---
+
+### a) Security Architecture for the 6G Healthcare Network
+
+To protect life-critical operations—such as robotic telesurgery and real-time patient telemetry—the security architecture replaces outdated perimeter boundaries with an intelligent, layered **Zero Trust Architecture (ZTA)** that enforces the rule: *"Never Trust, Always Verify."*
+
+* **Layer 1: Medical Device & Ingress Edge Layer (Physical & Access Edge)**
+* **Network Entities:** Surgical robotic consoles, tactile feedback gloves, wearable medical IoT (IoMT) sensors, and hospital edge radio towers (THz base stations).
+* **Micro-Segmentation:** Each medical service runs in a cryptographically isolated 6G network slice (e.g., an ultra-reliable, deterministic slice for robotic surgery isolated completely from general patient telemetry).
+* **Zero Trust Policy Enforcement Point (PEP):** Every device must undergo mutual cryptographic authentication before transmitting a single packet. Traffic from unverified sensors is blocked right at the radio antenna.
+
+
+* **Layer 2: Edge Computing & Distributed Control Layer (Multi-Access Edge Computing / MEC)**
+* **Low-Latency Edge Security Engines:** Security decision engines are deployed directly at nearby hospital edge servers to perform real-time verification in sub-milliseconds, preventing delays in robotic surgery.
+* **Continuous Dynamic Trust Scoring:** Instead of a one-time login, the system continuously monitors device behavior (packet intervals, command sequences, latency drift). If an actuator or surgical arm exhibits unexpected commands, its trust score drops instantly, restricting its access privileges in real time.
+
+
+* **Layer 3: Decentralized Blockchain Trust & Identity Layer**
+* **Decentralized Identifiers (DIDs):** Every surgeon, surgical robotic unit, and monitoring monitor has an immutable digital identity stored on a consortium blockchain.
+* **Smart Contract Access Policies:** Access to patient control channels and medical records is governed by automated smart contracts. Only explicitly authorized surgical personnel can unlock control streams to the robotic arm during a scheduled operation.
+
+
+* **Layer 4: AI-Driven Security Intelligence & Policy Decision Point (PDP)**
+* **The Central "Brain":** Evaluates global telemetry, blockchain identity records, and current threat models to dynamically update security rules across all 6G network slices.
+* **Federated Learning Agents:** AI models deployed across hospital edge nodes collaboratively train on threat patterns without centralizing sensitive patient healthcare records, preserving HIPAA/GDPR privacy.
+
+
+
+---
+
+### b) How AI and Blockchain Enhance Network Security in 6G
+
+* **How Artificial Intelligence (AI) Enhances Security:**
+* **Sub-Millisecond Anomaly Detection:**
+* In robotic surgery, a microsecond packet manipulation or injection attack could cause fatal surgical errors.
+* Deep learning models running at the 6G edge analyze packet streams in real time, detecting microscopic behavioral deviations (e.g., unusual command timing, jitter anomalies, or unauthorized control requests) and flagging them before physical harm occurs.
+
+
+* **Automated, Predictive Threat Mitigation:**
+* Instead of waiting for human administrators to notice an attack, AI acts as an autonomous policy agent.
+* If a volumetric denial-of-service (DoS) attack begins targeting the telemetry servers, AI models automatically reroute the life-critical surgery stream to alternate clean sub-paths and spin up localized rate limiters in microseconds.
+
+
+* **Privacy-Preserving Threat Intelligence (Federated Learning):**
+* Healthcare data contains confidential patient information that cannot be freely shared across servers.
+* AI enables federated learning where different hospital nodes train security models locally and only share encrypted model updates (gradients), creating a stronger defense system against emerging cyber threats without exposing private patient health records.
+
+
+
+
+* **How Blockchain Enhances Security:**
+* **Decentralized and Tamper-Proof Authentication:**
+* Traditional security relies on a single central server to check passwords and certificates, creating a single point of failure. If that server is knocked offline, surgeons cannot authenticate to robots.
+* Blockchain distributes identity verification across a tamper-proof ledger running on multiple nodes, ensuring that credential verification remains available and resilient even if parts of the network go down.
+
+
+* **Immutable Audit Trails for Surgical Commands:**
+* Every critical event—surgeon logins, parameter calibrations, robotic arm activations, and override commands—is cryptographically hashed and recorded onto an immutable distributed ledger.
+* This prevents malicious insiders or external attackers from altering historical system logs to hide unauthorized tampering or medical malpractice.
+
+
+* **Self-Enforcing Smart Contracts for Zero Trust Access:**
+* Smart contracts automatically enforce strict access control rules based on time, role, and context.
+* For example, the surgical robotic control interface can be automatically locked so it only accepts commands during the scheduled surgery window, and exclusively from the cryptographically verified hardware key assigned to the attending surgeon.

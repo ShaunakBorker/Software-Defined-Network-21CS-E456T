@@ -1,0 +1,124 @@
+SDN Worksheet Unit 5 Section 7
+
+A hybrid SDN approach enables selective, line-rate traffic mirroring without the cost of physical optical TAPs, dedicated TAP-aggregation fabrics, or hardware upgrades to legacy core switches.
+
+By inserting a single SDN-enabled switch (or hypervisor-level virtual switch) directly at the access point of the financial server, the company creates a programmable **selective SPAN (Switched Port Analyzer)** driven by a central controller.
+
+---
+
+### 1. Hybrid Architecture & Placement
+
+In a hybrid SDN model, the legacy network continues running standard distributed protocols (OSPF, BGP, STP, L2 switching), while the SDN switch operates locally to manage the financial server's link.
+
+```
+       [ Legacy Corporate Core / Distribution Network ]
+             (Runs traditional routing & switching)
+                               |
+                               | Trunk / Access Uplink
+                               v (Port 1: Ingress/Egress)
+             +----------------------------------+
+             |      Hybrid SDN Switch           |<==== [ SDN Controller ]
+             |  (e.g., OpenFlow White-Box / OVS)|      (e.g., Ryu / ODL)
+             +-----------------+----------------+
+                               |
+            +------------------+------------------+
+            | (Port 2)                            | (Port 3)
+            v                                     v
+   +--------------------+               +--------------------+
+   |  Financial Server  |               | Intrusion Analysis |
+   | (Protected Target) |               | Engine (Zeek/Snort)|
+   +--------------------+               +--------------------+
+
+```
+
+* **Physical Ingress/Egress (Port 1):** Connects to the legacy distribution/access switch.
+* **Target Node (Port 2):** Connects directly to the critical financial server.
+* **Analyzer Interface (Port 3):** Connects to an Intrusion Detection System (IDS), Network Detection & Response (NDR) sensor, or network analyzer (e.g., Zeek, Suricata, Wireshark).
+
+---
+
+### 2. Implementation Mechanism: OpenFlow Action Buckets
+
+Traditional switch port mirroring (SPAN) copies *all* traffic indiscriminately, which can overwhelm the analysis server's NIC or disk storage with bulk data (backups, OS updates).
+
+The SDN controller solves this by programming **granular flow rules with multi-action forwarding**, duplicating only traffic relevant to security inspection while letting routine traffic pass normally.
+
+#### Forward Path (Client $\rightarrow$ Financial Server)
+
+When traffic enters from the legacy network destined for the financial server:
+
+1. **Rule Match:** Match packets targeting the financial server's IP and sensitive service ports (e.g., HTTPS `TCP/443`, Database `TCP/1433` or `TCP/5432`).
+2. **Action Execution:** Apply an `OUTPUT` action to the server port, and simultaneously add an `OUTPUT` action to the analyzer port.
+
+#### Reverse Path (Financial Server $\rightarrow$ Client)
+
+When the financial server replies:
+
+1. **Rule Match:** Match packets originating from the server's IP and ports.
+2. **Action Execution:** Send the original frame out to the legacy network, with a clone forwarded out to the analyzer port.
+
+---
+
+### 3. OpenFlow Flow Table Implementation Example
+
+Using OpenFlow 1.3 multi-action pipelines on the SDN switch:
+
+```text
+# 1. Bi-directional Mirroring for High-Risk Traffic (e.g., SQL Database Queries)
+Table=0, Priority=200, Match: in_port=Port1, ip, nw_dst=10.10.30.50 (Fin_Server), tcp, tcp_dst=1433
+Action: 
+    output:Port2 (Deliver to Financial Server),
+    output:Port3 (Mirror copy to IDS/Analyzer)
+
+Table=0, Priority=200, Match: in_port=Port2, ip, nw_src=10.10.30.50 (Fin_Server), tcp, tcp_src=1433
+Action: 
+    output:Port1 (Deliver to Legacy Core),
+    output:Port3 (Mirror copy to IDS/Analyzer)
+
+# 2. Selective Mirroring for Administration / Remote Management (SSH/RDP)
+Table=0, Priority=200, Match: in_port=Port1, ip, nw_dst=10.10.30.50, tcp, tcp_dst=3389
+Action: 
+    output:Port2,
+    output:Port3
+
+# 3. Un-Mirrored Pass-Through for High-Volume Non-Critical Bulk Flows (e.g., Backup Subnet)
+Table=0, Priority=150, Match: in_port=Port1, ip, nw_src=10.10.99.0/24 (Backup Server), nw_dst=10.10.30.50
+Action: 
+    output:Port2 (Pass directly without duplicating to Port3 to preserve IDS capacity)
+
+# 4. Default Layer 2 Bridging (Ensures legacy network connectivity remains unbroken)
+Table=0, Priority=10, Match: in_port=Port1, dl_dst=MAC_FIN_SERVER
+Action: output:Port2
+
+Table=0, Priority=10, Match: in_port=Port2
+Action: output:Port1
+
+```
+
+---
+
+### 4. Alternative: Remote Mirroring via GRE/ERSPAN (Decoupled IDS)
+
+If the IDS/analyzer resides in a remote data center or monitoring rack rather than being physically cabled to the SDN switch:
+
+* The SDN switch uses an **Encapsulated Remote SPAN (ERSPAN) or Open vSwitch GRE tunnel**.
+* Instead of outputting directly to a physical port, the switch encapsulates the mirrored packet inside an IP/GRE header:
+```text
+Action: 
+    output:Port2, 
+    set_tunnel:1001, 
+    output:GreTunnel0 (Sent across legacy routed network to Remote IDS IP)
+
+```
+
+
+* The legacy network forwards the GRE packet as regular L3 traffic, delivering mirrored packets across the network without requiring dedicated monitoring cabling.
+
+---
+
+### 5. Key Advantages of the Hybrid SDN Approach
+
+* **Low CapEx:** Eliminates the purchase of dedicated optical TAP hardware and physical patch-panel rewiring; uses a single commodity white-box switch or existing Open vSwitch installation.
+* **Zero Disruption to Legacy Infrastructure:** The existing network continues using standard spanning-tree and routing topologies. The SDN switch acts as a transparent, inline bump-in-the-wire.
+* **Intelligent Filtered Mirroring:** Protects intrusion detection systems from packet drops by filtering out high-bandwidth bulk flows (e.g., scheduled backups) in switch hardware before reaching the sensor.
+* **Dynamic Security Reconfiguration:** If an alert is raised by the IDS, the SDN controller can instantly update flow rules via Northbound API to rate-limit or drop suspicious sessions on the spot, turning passive monitoring into active defense.

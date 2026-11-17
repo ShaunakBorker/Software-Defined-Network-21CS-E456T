@@ -1,0 +1,60 @@
+SDN Worksheet Unit 4 Section 2
+### Case Study Question (SLO-1): 6G Network Security Challenges
+
+---
+
+### a) Major Network Security Challenges Specific to 6G Networks
+
+* **Vulnerabilities in AI-Native Control:**
+* 6G builds artificial intelligence directly into the network core and radio management rather than using AI as an add-on.
+* Attackers can launch **adversarial AI attacks**, such as data poisoning (feeding bad data to train network models) or evasion attacks, tricking the automated controller into misrouting traffic, dropping connections, or opening backdoors.
+
+
+* **Physical and Directional Risks in Terahertz (THz) Frequencies:**
+* THz signals use ultra-narrow, directional beamforming and intelligent reflecting surfaces (IRS/RIS) to overcome short range and high signal loss.
+* Attackers can deploy rogue reflective surfaces to manipulate or hijack beams, or physically align eavesdropping sensors directly along the pencil-thin beam path to intercept data.
+
+
+* **Massive Expansion of the Attack Surface:**
+* Connecting billions of micro-sensors, smart dust, autonomous vehicles, and holographic endpoints drastically increases the number of potential entry points.
+* Many tiny IoT nodes have limited processing power and battery life, preventing them from running heavy security algorithms and making them prime targets for botnets.
+
+
+* **Threats to Edge and Distributed Computing:**
+* To hit sub-millisecond latency targets, compute power moves to micro-edge nodes scattered throughout the city (on lampposts, traffic lights, and bus stops).
+* These small, physically accessible edge locations are far more vulnerable to direct physical tampering, unauthorized hardware taps, and local credential theft than locked, central data centers.
+
+
+* **Post-Quantum Cryptography Risks:**
+* 6G networks will operate alongside the emergence of practical quantum computers.
+* Legacy public-key encryption schemes (like RSA and standard ECC) can be broken by quantum algorithms, exposing transmitted municipal telemetry and identity data to "harvest now, decrypt later" attacks.
+
+
+
+---
+
+### b) Why Traditional 4G/5G Security Mechanisms Are Insufficient for 6G
+
+* **Static, Perimeter-Based Security Fails in a Decentralized Fabric:**
+* 4G and 5G rely heavily on centralized authentication points (like the Core Network HSS/UDM) and fixed perimeter firewalls.
+* 6G is fully decentralized, mesh-like, and dynamic; devices constantly connect directly to nearby edge nodes and each other (Device-to-Device / D2D), bypassing traditional central inspection checkpoints.
+
+
+* **Encryption and Handshake Overhead Breaks Sub-Millisecond Latency:**
+* Legacy authentication handshakes (such as 5G-AKA) and multi-roundtrip key exchanges take several milliseconds to complete.
+* Mission-critical 6G tasks (like real-time collision avoidance for autonomous cars and tactile holographic interaction) require microsecond-level response times; standard heavy handshakes introduce unacceptable latency delays.
+
+
+* **Rule-Based Firewalls Cannot Detect AI-Driven Exploits:**
+* 4G/5G intrusion detection tools rely on static signatures and pre-programmed threshold rules.
+* These tools cannot identify subtle, automated attacks that manipulate machine learning models (model poisoning, gradient leakage, or policy spoofing) within the 6G AI-native control loop.
+
+
+* **Lack of Integrated Communication and Sensing (ISAC) Security:**
+* 6G combines wireless data communication with radar-like spatial sensing on the same radio waves (tracking object locations, speeds, and shapes).
+* 4G/5G security protocols are designed strictly for data transport; they provide zero protections against sensory eavesdropping, location spoofing, or unauthorized environmental scanning.
+
+
+* **Centralized Certificate Authorities Cannot Scale to Trillions of Devices:**
+* Traditional Public Key Infrastructure (PKI) models require centralized server lookups to verify identity certificates.
+* In a 6G city with trillions of short-lived, transient IoT connections, central certificate validation servers would face severe connection bottlenecks, requiring automated, decentralized trust models (such as zero-trust distributed ledgers).

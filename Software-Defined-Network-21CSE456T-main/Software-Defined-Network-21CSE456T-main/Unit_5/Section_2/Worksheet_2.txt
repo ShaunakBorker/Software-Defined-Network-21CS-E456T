@@ -1,0 +1,112 @@
+SDN Worksheet Unit 5 Section 2
+### Scenario 11: Geographic CDN Edge Redirection Using SDN
+
+---
+
+### 1. Conceptual Architecture & Problem Setup
+
+Traditional Content Delivery Networks (CDNs) typically rely on DNS-based Anycast or Geo-DNS to steer users to the nearest cache server. However, DNS caching (TTL delays), ISP recursive resolver mismatch (EDNS0 limitations), and sudden link congestion frequently cause clients to be routed to suboptimal, high-latency replicas.
+
+An **SDN-enabled edge switch** (e.g., deployed at an ISP point of presence or edge gateway) bypasses these limitations by performing **Layer 3/4 flow matching and line-rate header modification (NAT / Flow Rewriting)**. All CDN requests target a single, unified Virtual Service IP (`VIP_CDN`). The edge switch dynamically directs each user's flow to the geographically closest or lowest-latency edge replica without changing client DNS configurations.
+
+```
+                              [ Centralized SDN Controller ]
+                           (Geo-IP Database + Real-time Latency)
+                                          |
+                                          | Southbound (OpenFlow / P4Runtime)
+                                          v
+                              +-----------------------+
+                              | SDN-Enabled Edge Switch|
+                              +-----------+-----------+
+                                          |
+                +-------------------------+-------------------------+
+                |                                                   |
+                v (Lowest latency: 5ms)                             v (Latency: 45ms)
+    +-----------------------+                           +-----------------------+
+    |  Local Edge Replica   |                           |  Remote Edge Replica  |
+    |      (Server A)       |                           |      (Server B)       |
+    |  IP: 198.51.100.10    |                           |  IP: 203.0.113.50     |
+    +-----------------------+                           +-----------------------+
+
+```
+
+---
+
+### 2. Implementation Mechanism
+
+The edge switch implements location-aware redirection through three coordinated operations:
+
+#### A. Geo-IP & Latency Mapping at the Controller
+
+* The SDN controller maintains an up-to-date mapping of:
+* **Client Ingress IP prefixes** mapped to geographic coordinates / network distance (via GeoIP or BGP telemetry).
+* **Edge Replica Health & Latency:** Real-time probing (e.g., via In-band Network Telemetry or active TWAMP/ping probes) to know which replica has the lowest latency and available compute capacity.
+
+
+
+#### B. Ingress Packet Rewriting (Destination NAT)
+
+* When a user sends an HTTP/HTTPS request to the CDN's virtual address (`dst_ip = VIP_CDN`), the edge switch intercepts the flow:
+1. Matches on `ipv4_src` (identifying user location/subnet) and `ipv4_dst = VIP_CDN`.
+2. Applies a `set_field: ipv4_dst = IP_Replica_A` action (substituting the virtual IP with the closest physical edge server's IP).
+3. Updates the destination MAC address (`eth_dst`) and outputs to the port leading directly to Server A.
+
+
+
+#### C. Reverse Egress Rewriting (Source NAT)
+
+* When the edge replica responds, it sends packets from `src_ip = IP_Replica_A` back to the client.
+* If the client receives a reply from `IP_Replica_A` instead of the `VIP_CDN` it requested, the client's operating system drops the packet (TCP connection reset).
+* The edge switch applies a reverse flow entry:
+1. Matches on `ipv4_src = IP_Replica_A` and `ipv4_dst = IP_Client`.
+2. Rewrites the source address: `set_field: ipv4_src = VIP_CDN`.
+3. Updates checksums and forwards the packet back out to the client.
+
+
+
+---
+
+### 3. Step-by-Step Flow Table Execution (OpenFlow Example)
+
+Assume:
+
+* **Client IP:** `192.0.2.15` (Located in Region East)
+* **Virtual CDN IP:** `198.51.100.1` (`VIP_CDN`)
+* **Nearest Replica (Region East - Server A):** `198.51.100.10` (`MAC_A`, on `Port 2`)
+* **Remote Replica (Region West - Server B):** `203.0.113.50` (`MAC_B`, on `Port 3`)
+
+#### Step 1: Client Request Arrives (Forward Flow)
+
+The switch matches the incoming client connection and rewrites the destination header to Server A:
+
+```text
+Table=0, Priority=100, 
+Match: in_port=Port1, ip, nw_src=192.0.2.0/24, nw_dst=198.51.100.1, tcp, tcp_dst=443
+Actions: 
+    mod_dl_dst: MAC_A,
+    mod_nw_dst: 198.51.100.10,
+    output: Port2
+
+```
+
+#### Step 2: Server Response Handled (Reverse Flow)
+
+The switch captures the return packet from Server A and restores the source address to the `VIP_CDN`:
+
+```text
+Table=0, Priority=100, 
+Match: in_port=Port2, ip, nw_src=198.51.100.10, nw_dst=192.0.2.0/24, tcp, tcp_src=443
+Actions: 
+    mod_dl_src: MAC_SWITCH_VIP,
+    mod_nw_src: 198.51.100.1,
+    output: Port1
+
+```
+
+---
+
+### 4. Key Advantages of the SDN Edge Approach
+
+1. **Sub-Millisecond Redirection Without DNS Latency:** Eliminates DNS TTL caching delays. Changes take effect on the very next packet.
+2. **Dynamic Failover & Load Balancing:** If Server A spikes to 95% CPU or suffers an interface down event, the SDN controller instantly installs a rule pointing new flows from `192.0.2.0/24` to Server B (`203.0.113.50`) with zero client disruption.
+3. **Transport-Layer Transparency:** The entire redirection runs in hardware (TCAM) at line rate without proxy software overhead or application-layer decryption delays at the switch.

@@ -1,0 +1,22 @@
+SDN Worksheet Unit 1 Section 8
+### Question
+
+Scenario 16:
+A user has written a custom topology in a file named mydc.py. The topology class inside is named FatTree. What is the full Mininet command to run this specific custom topology from the terminal?
+
+---
+
+### Answer
+
+To run the custom `FatTree` topology defined inside the `mydc.py` script, execute the following command in the Linux terminal:
+
+```bash
+sudo mn --custom mydc.py --topo fattree
+
+```
+
+* **Command Breakdown:**
+* `sudo mn`: Starts Mininet with superuser/root permissions.
+* `--custom mydc.py`: Instructs Mininet to import the external Python script containing the custom topology definition.
+* `--topo fattree`: Specifies the registered topology name. Mininet convention registers the class name in lowercase (or by the key configured in the script's `topos` dictionary, e.g., `topos = {'fattree': (lambda: FatTree())}`).
+* *(Note: If the dictionary entry was defined with exact case, e.g., `topos = {'FatTree': ...}`, use `--topo FatTree`)*.

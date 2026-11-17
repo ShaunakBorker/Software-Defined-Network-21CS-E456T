@@ -1,0 +1,42 @@
+SDN Worksheet Unit 2 Section 8
+### Question
+
+Scenario: A network operations team is responsible for a multi-tenant data center. They need to ensure that different tenants' traffic flows are completely isolated, even when sharing the same physical switches.
+Question: How can an SDN controller, using OpenFlow, implement this multi-tenancy isolation effectively?
+
+---
+
+### Answer
+
+An SDN controller using OpenFlow implements robust multi-tenancy isolation by enforcing strict boundary policies and segregation directly within the flow tables of shared physical switches. Because OpenFlow provides multi-field header matching, tag manipulation, and table pipeline control, isolation can be achieved without relying on traditional physical separation.
+
+* **Tag-Based Flow Segregation (VLAN / VXLAN / MPLS):**
+* **Tag Application at Edge Ingress:** When a tenant's packet enters an edge switch, the controller matches the physical ingress port or source MAC address and pushes an isolation tag onto the packet (such as an 802.1Q VLAN ID, MPLS label, or VXLAN Virtual Network Identifier / VNI).
+* **Strict Tag Matching across Core Switches:** All subsequent forwarding rules across the core network fabric mandate matching on this specific tenant identifier. Switches only forward packets out ports designated for that specific tenant tag, ensuring traffic from Tenant A can never cross into Tenant B's domain.
+* **Egress Decapsulation:** At the destination edge switch, the outer tag or encapsulation header is stripped before delivering the packet to the destination tenant endpoint.
+
+
+* **Support for Overlapping IP and MAC Address Spaces:**
+* Different tenants often use identical private RFC 1918 IP address spaces (e.g., both tenants using `10.0.0.0/24`).
+* In a traditional switch, this causes severe address conflicts. Under OpenFlow, the controller disambiguates overlapping addresses by combining Layer 2/3 headers with tenant context IDs (e.g., matching on both `VLAN_ID == 100` AND `ipv4_dst == 10.0.0.1` vs. `VLAN_ID == 200` AND `ipv4_dst == 10.0.0.1`).
+* This guarantees independent address space virtualization on the exact same physical forwarding tables.
+
+
+* **Multi-Table Pipelines and Flow Table Slicing:**
+* OpenFlow 1.1+ supports multiple flow tables processed sequentially via pipeline processing (`goto_table`).
+* The controller can designate specific tables for tenant classification, tenant-specific policy evaluation, and physical forwarding:
+* **Table 0 (Classification):** Maps the packet to a metadata tag representing `Tenant_ID`.
+* **Table 1+ (Tenant Policy):** Isolates flow lookup pipelines so each tenant’s rules are kept separate and evaluated independently using metadata matches.
+
+
+* Alternatively, virtualization slicing proxies like **FlowVisor** or **OpenVirteX** sit between OpenFlow switches and multiple controllers, carving the physical flow space into isolated "slices" so each tenant can run their own dedicated controller without interfering with others.
+
+
+* **Enforcing Strict Default-Drop Isolation Rules:**
+* The controller programs all switches with a baseline default policy that drops any inter-tenant traffic.
+* Unless an explicit inter-tenant route or security policy rule is installed, packets traversing boundary ports between different tenant segments are dropped (`OFPFC_ADD` with priority `0` and empty action / drop).
+
+
+* **Tenant-Level QoS and Resource Isolation:**
+* Multi-tenancy requires performance isolation in addition to security isolation so that one tenant’s traffic spike ("noisy neighbor") does not degrade another tenant's service.
+* Using OpenFlow meter bands (`OFPMT_METER`) and queue configurations (`set_queue`), the controller assigns rate limits, maximum burst rates, and dedicated switch hardware egress queues per tenant, guaranteeing predictable bandwidth and latency.

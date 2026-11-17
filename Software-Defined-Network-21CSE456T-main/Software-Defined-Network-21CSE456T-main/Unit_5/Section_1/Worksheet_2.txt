@@ -1,0 +1,140 @@
+SDN Worksheet Unit 5 Section 1
+### Service Function Chain (SFC) Design: Firewall-as-a-Service (VFW $\rightarrow$ IPS $\rightarrow$ Database)
+
+---
+
+### 1. Architectural Overview & Forwarding Chain
+
+The goal is to steer incoming tenant traffic sequentially through a **Virtual Firewall (VFW)**, followed by an **Intrusion Prevention System (IPS)**, before allowing legitimate packets to reach the protected **Database Server**, all while keeping the data path transparent and dynamically reconfigurable via SDN.
+
+```
+                              [ Centralized SDN Controller ]
+                         (Installs Flow Rules & SFC Policies)
+                                      |            |
+             +------------------------+            +------------------------+
+             | Southbound (OpenFlow / P4Runtime)                            |
+             v                                                              v
++---------------------------+                              +---------------------------+
+|  Ingress Leaf Switch      |                              |  Destination Leaf Switch  |
+|  (Service Classifier)     |                              |  (Egress Forwarder)       |
++-------------+-------------+                              +-------------+-------------+
+              |                                                          ^
+              | Encapsulated Flow                                        | Clean Traffic
+              v                                                          |
++--------------------------------------------------------------------------------------+
+|                           Virtualized Compute Host (NFVI)                            |
+|                                                                                      |
+|   +------------------------------------------------------------------------------+   |
+|   |                        Hypervisor OVS (Service Function Forwarder - SFF)     |   |
+|   +--------+------------------^-----------------------+------------------^-------+   |
+|            | Tap / Port       | Clean Ingress         | Tap / Port       | Passed    |
+|            v                  |                       v                  | Traffic   |
+|     +-------------+           |                +-------------+           |           |
+|     |     VFW     |-----------+                |     IPS     |-----------+           |
+|     |   (SF 1)    |                            |   (SF 2)    |                       |
+|     +-------------+                            +-------------+                       |
+|   Policy: Access Control                     Policy: Deep Inspection                 |
+|   (Stateful filtering / Ports)               (Signatures & Behavioral Anomaly)       |
++--------------------------------------------------------------------------------------+
+                                                                         |
+                                                                         v
+                                                              +---------------------+
+                                                              |   Database Server   |
+                                                              |  (Protected Target) |
+                                                              +---------------------+
+
+```
+
+---
+
+### 2. SFC Functional Components
+
+* **1. Service Classifier (SC) — Ingress Switch:**
+* Inspects incoming client packets matching the database's subnet and service port (`TCP dst_port = 3306 / 5432 / 1521`).
+* Encapsulates matched packets into a Service Function Chaining header:
+* **Mechanism:** Uses the IETF standard **Network Service Header (NSH)** over VXLAN-GPE (Generic Protocol Extension), or **Segment Routing (SRv6)**.
+* **Metadata Assigned:**
+* **Service Path Identifier (SPI):** `SPI = 100` (identifies this specific chain).
+* **Service Index (SI):** `SI = 255` (decremented at each hop to track sequence).
+
+
+
+
+
+
+* **2. Service Function Forwarder (SFF) — Local Virtual Switch (OVS):**
+* Sits inside the hypervisor/host running the security appliances.
+* Reads the incoming packet's `SPI` and `SI` and delivers the packet to the appropriate virtual interface (vNIC) of each Service Function.
+
+
+* **3. Service Functions (SFs):**
+* **SF 1 — Virtual Firewall (VFW):**
+* Inspects Layer 3/4 headers, validates connection states (TCP flags, active connection tables), and verifies that the source IP has rights to access the database.
+* If unauthorized $\rightarrow$ Packet is dropped immediately.
+* If authorized $\rightarrow$ Packet is handed back to the SFF.
+
+
+* **SF 2 — Intrusion Prevention System (IPS):**
+* Conducts Deep Packet Inspection (DPI) on the payload, checking for SQL injection strings, protocol exploits, and unauthorized schema scans.
+* If malicious $\rightarrow$ Packet is logged and dropped; an alert is raised.
+* If clean $\rightarrow$ Packet is handed back to the SFF.
+
+
+
+
+* **4. Egress Forwarder / Destination Switch:**
+* Strips the outer NSH / VXLAN-GPE transport encapsulation (decapsulation).
+* Forwards the native Ethernet/IP frame directly to the target **Database Server**.
+
+
+
+---
+
+### 3. Step-by-Step Flow Execution Pipeline
+
+1. **Classification & Tagging (Ingress Switch):**
+* Packet enters the fabric targeting `IP_DB:3306`.
+* Switch flow rule matches: `nw_dst=IP_DB, tp_dst=3306`.
+* Action: Push NSH header with `SPI=100, SI=255`, encapsulate in VXLAN-GPE, forward to the compute host housing the VFW.
+
+
+2. **First Service Hop — Virtual Firewall (VFW):**
+* The host's OVS (SFF) receives the packet with `SPI=100, SI=255`.
+* SFF rule matches and forwards the packet to the `veth` port connected to the VFW.
+* VFW validates Layer 4 state. Upon passing:
+* The packet returns to the SFF with the Service Index decremented: `SI = 254`.
+
+
+
+
+3. **Second Service Hop — Virtual IPS:**
+* SFF evaluates the updated header: `SPI=100, SI=254`.
+* Flow rule forwards the packet directly out the virtual port attached to the IPS.
+* IPS inspects the application payload for SQL injection attacks. Upon passing:
+* The packet returns to the SFF with the Service Index decremented: `SI = 253`.
+
+
+
+
+4. **Terminal Delivery (Decapsulation & Egress):**
+* SFF recognizes that `SI=253` indicates the end of the Service Path for `SPI=100`.
+* Action: Strip the outer VXLAN-GPE and NSH headers (restoring the standard IP packet).
+* The unencapsulated packet is forwarded directly to the Database Server's vNIC or destination Leaf switch.
+
+
+
+---
+
+### 4. Dynamic Control-Plane Management (SDN Advantages in this Design)
+
+* **Zero-Touch Re-Chaining:**
+* If the enterprise customer decides to insert an additional security layer (e.g., a **Web Application Firewall / WAF** before the VFW), the SDN controller simply updates the `SPI` flow tables on the SFF. The chain changes instantly in software without rewiring physical cables or altering database IP addresses.
+
+
+* **Elastic Load Balancing & Auto-Scaling:**
+* If the VFW or IPS becomes a CPU bottleneck under high transaction volume, the NFV orchestrator spins up an identical instance (`VFW-2` or `IPS-2`).
+* The SDN controller modifies the SFF flow table to load-balance traffic across `VFW-1` and `VFW-2` based on a 5-tuple hash, preserving session affinity.
+
+
+* **Failure Handling and Dynamic Bypass:**
+* If an IPS instance crashes, the SDN controller detects the port down/health-check failure and can temporarily route traffic directly from the VFW to the Database (or to a backup IPS), preventing complete service outages.

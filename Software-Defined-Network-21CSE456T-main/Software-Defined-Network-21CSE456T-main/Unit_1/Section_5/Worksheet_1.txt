@@ -1,0 +1,29 @@
+### Question
+
+Scenario 5:
+A financial trading firm requires that all voice traffic (VoIP) for its traders must have the highest network priority to ensure zero call degradation. The network spans three floors of a building. Why is a centralized SDN controller uniquely suited to enforce this network-wide Quality of Service (QoS) policy effectively?
+
+---
+
+### Answer
+
+A centralized Software-Defined Network (SDN) controller is uniquely positioned to enforce high-priority Quality of Service (QoS) across a multi-floor facility because it eliminates the fragmentation, blind spots, and manual overhead of traditional hop-by-hop queueing.
+
+* **Global Network Topology and State Awareness:**
+* Unlike traditional switches that only make localized forwarding decisions based on their neighboring links, an SDN controller maintains a complete, global view of the entire multi-floor topology.
+* It continuously tracks real-time link utilization, available bandwidth, and queue congestion across every switch in the path, allowing it to compute and reserve the lowest-latency, jitter-free paths specifically for VoIP traffic.
+
+
+* **End-to-End Consistent Flow Classification:**
+* Traditional QoS relies on DSCP or 802.1p CoS markings configured independently on dozens of switches; a single misconfigured switch port along the path can strip markings or drop priority.
+* An SDN controller programs match-action flow rules directly into all forwarding tables across the entire path. It identifies VoIP packets (matching on criteria like SIP/RTP port numbers, VLANs, or IP addresses) and enforces identical priority handling from the trader's desktop switch port directly to the voice gateway.
+
+
+* **Dynamic Traffic Steering and Queue Management:**
+* If large data transfers (e.g., market data analytics or backup syncs) suddenly saturate a primary inter-floor trunk link, the centralized controller detects the rising latency or packet loss immediately.
+* The controller can dynamically reroute non-essential background traffic to alternate secondary paths or assign VoIP packets into dedicated hardware priority queues (strict priority queues) with reserved rate limits, ensuring zero call degradation.
+
+
+* **Single-Point Policy Enforcement and Rapid Updates:**
+* Any adjustments to VoIP QoS parameters, trader subnets, or new floor expansions are made once in software at the controller level.
+* The controller automatically and atomically deploys the appropriate flow rules and queue configurations to all affected switches via southbound APIs (such as OpenFlow or OVSDB), guaranteeing that policies are applied instantaneously and uniformly without configuration drift.

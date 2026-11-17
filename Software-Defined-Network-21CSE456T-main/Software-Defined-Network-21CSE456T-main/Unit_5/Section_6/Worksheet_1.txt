@@ -1,0 +1,152 @@
+SDN Worksheet Unit 5 Section 6
+### Automated SDN Incident Response Plan: Ransomware Containment in Healthcare
+
+In a hospital network running medical IoT (Internet of Medical Things / IoMT) alongside public-facing kiosks, containing lateral infection spread without disrupting life-critical telemetry is paramount. The SDN controller acts as a centralized policy enforcement engine, executing an automated containment workflow within milliseconds of detection.
+
+```
+                    +------------------------------------------+
+                    |    Phase 1: Real-Time Anomaly Detection  |
+                    | (Flow Spikes, Port Scans, DNS Entropy)  |
+                    +--------------------+---------------------+
+                                         |
+                                         v
+                    +------------------------------------------+
+                    |    Phase 2: Ingress Micro-Isolation     |
+                    |   (Port Quarantine / Hard Drop at Leaf)  |
+                    +--------------------+---------------------+
+                                         |
+                                         v
+                    +------------------------------------------+
+                    |    Phase 3: Honey-Token & Sinkhole Trap  |
+                    |   (Diverts C2 / SMB Traffic to Sandbox)  |
+                    +--------------------+---------------------+
+                                         |
+                                         v
+                    +------------------------------------------+
+                    |    Phase 4: Medical VLAN Hardening       |
+                    | (Lock down MRI/PACS/Infusion Pump Paths) |
+                    +--------------------+---------------------+
+                                         |
+                                         v
+                    +------------------------------------------+
+                    |    Phase 5: Forensic Mirroring & Alert   |
+                    |  (Zero-Impact SPAN + SIEM Escalation)    |
+                    +------------------------------------------+
+
+```
+
+---
+
+### Phase 1: Real-Time Anomaly Detection & Behavioral Triggering
+
+Ransomware variants typically attempt rapid discovery and propagation immediately after execution:
+
+1. **Behavioral Flags in the Data Plane:**
+* **Lateral Scanning:** A sharp rise in TCP SYN packets or table-miss (`Packet-In`) events originating from the kiosk targeting common lateral protocols (`TCP/445` SMB, `TCP/135` RPC, `TCP/3389` RDP).
+* **Entropy & DGA Queries:** Unusual volumes of DNS queries or high-entropy Domain Generation Algorithm (DGA) lookups attempting to reach Command-and-Control (C2) infrastructure.
+* **Mass File Renaming / High Egress Volume:** Sudden continuous write bursts directed toward local file shares or hospital administrative storage.
+
+
+2. **Event Trigger:**
+* An SDN monitoring application (or integrated Network Detection & Response / NDR platform) identifies the kiosk’s IP/MAC (`10.50.2.14` / `AA:BB:CC:DD:EE:01`) exceeding lateral connection thresholds.
+* A high-priority event is dispatched to the SDN Controller's security application via REST/gRPC.
+
+
+
+---
+
+### Phase 2: Immediate Ingress Micro-Isolation (Zero Trust Containment)
+
+The controller executes containment at the **first physical point of ingress** (the edge switch port to which the kiosk is connected) to stop propagation at line rate:
+
+* **Hardware-Level Port Quarantine:**
+* The controller pushes high-priority flow rules to the Top-of-Rack/access switch:
+```text
+Table=0, Priority=65535,
+Match: in_port=Port_Kiosk, eth_src=AA:BB:CC:DD:EE:01, nw_src=10.50.2.14,
+Action: DROP
+
+```
+
+
+* This blocks all egress frames from the infected device into the hospital backbone. The kiosk cannot communicate with any other local host, subnet, or default gateway.
+
+
+* **Exempting Diagnostic Telemetry:**
+* If remediation requires remote triage, the controller leaves a restricted path allowing only encrypted SSH/management traffic from a verified Incident Response jump host.
+
+
+
+---
+
+### Phase 3: Traffic Diversion to a Sinkhole / Honeynet
+
+To prevent the ransomware from realizing it has been isolated (which can trigger local data wiping routines), the controller can use dynamic flow rewriting:
+
+* **Transparent Redirection:**
+* Instead of discarding the traffic, the controller alters the packet headers:
+```text
+Action: set_field: ipv4_dst = 192.168.254.10 (Internal Honey-Share),
+        output: Port_Security_Sandbox
+
+```
+
+
+
+
+* **Intelligence Gathering:**
+* Outbound SMB spread attempts are routed to an isolated sandbox containing decoy file shares and simulated vulnerabilities.
+* This delays malicious execution, captures encryption keys, and records C2 endpoints without exposing production assets.
+
+
+
+---
+
+### Phase 4: Proactive Hardening of Critical Medical Assets
+
+While isolating the infected source, the controller automatically reinforces protection around high-value and life-critical equipment:
+
+* **Tightened Medical Segment Rules:**
+* The controller audits and locks down the flow tables of switches hosting MRI scanners, CT systems, PACS servers, and infusion pump gateways.
+* Temporary strict-allow rules are installed: only pre-whitelisted, established medical workstation IPs are permitted to talk to these devices; any wildcard, cross-subnet, or newly seen IP attempting access is dropped immediately.
+
+
+* **Revoking Ephemeral Permissions:**
+* Active guest Wi-Fi paths and cross-VLAN management holes are temporarily revoked until the attack scope is confirmed.
+
+
+
+---
+
+### Phase 5: Automated Forensics and Escalation
+
+1. **Dynamic Port Mirroring (Zero-Disruption SPAN):**
+* The controller modifies the switch pipeline to duplicate in-flight packets from the infected kiosk port directly to a Network Forensic Collector (e.g., Zeek, Suricata) for deep packet inspection.
+
+
+2. **SIEM / SOAR Notification:**
+* The controller sends an immediate webhook payload to the hospital's Security Operations Center (SOC) containing:
+* Device Identity (IP, MAC, physical switch, and switch port).
+* Physical Location (e.g., *Waiting Room B - Kiosk 03*).
+* Exact timestamp of quarantine execution.
+* Detected attack signatures (e.g., *SMB lateral spread, C2 beaconing*).
+
+
+
+
+3. **Physical Notification:**
+* The controller signals the Network Access Control (NAC) system to trigger an administrative lock on the kiosk's OS session and disable its badge-access integration.
+
+
+
+---
+
+### Incident Response Summary
+
+| Response Stage | Execution Time | SDN Action | Operational Impact |
+| --- | --- | --- | --- |
+| **Detection** | $< 1\text{ second}$ | Behavioral anomaly flags lateral port scan / C2 lookup | Zero impact on clinical traffic |
+| **Ingress Drop** | Milliseconds | Push priority `DROP` rules to edge switch TCAM | Kiosk completely severed from internal networks |
+| **Containment** | Immediate | Dynamic diversion to internal honeynet/sandbox | Decoys malware; prevents fail-open wipe logic |
+| **Protection** | Automated | Lock down flow tables on MRI, PACS, and ICU switches | Medical assets completely shielded from infection |
+| **Escalation** | Real-time | Telemetry export to SOC and dynamic SPAN creation | Security team receives complete packet capture |

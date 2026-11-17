@@ -1,0 +1,25 @@
+SDN Worksheet Unit 2 Section 4
+### Question
+
+Scenario: A cloud provider uses ONOS as its SDN controller. They want to expose network services (like virtual private networks or load balancers) to their tenants through a self-service portal.
+Question: Which ONOS interface would be primarily used by this self-service portal to request and configure these network services?
+
+---
+
+### Answer
+
+The **Northbound Interface (NBI)** would be primarily used by the self-service portal.
+
+* **Role of the Northbound Interface:**
+* In Software-Defined Networking and ONOS (Open Network Operating System), the Northbound Interface connects the centralized controller to external applications, cloud orchestrators (such as OpenStack or Kubernetes), and business management portals.
+* It exposes high-level network services and programmatic abstractions upward, allowing external systems to query network states and provision network policies without interacting with low-level switch protocols.
+
+
+* **Why Northbound is the Interface for the Portal:**
+* **RESTful APIs:** ONOS provides comprehensive REST APIs via its northbound interface. The self-service web portal issues HTTP requests (such as `POST`, `PUT`, or `DELETE` with JSON payloads) directly to ONOS to provision VPN tunnels, define virtual networks, or request load-balancing configurations.
+* **Intent Framework:** ONOS includes a high-level Intent Framework accessible via the Northbound Interface. The portal does not need to compute hop-by-hop forwarding tables or configure individual switch flow entries; it simply expresses the tenant's high-level intent (e.g., *"Connect Tenant_A Host 1 to Host 2 with guaranteed bandwidth"* or *"Deploy L3VPN between Site X and Site Y"*). The ONOS core then automatically compiles and enforces this intent across the underlying network fabric.
+
+
+* **Contrast with Other Interfaces:**
+* **Southbound Interface:** Used by ONOS to communicate downward to physical or virtual switches (via protocols such as OpenFlow, NETCONF, or P4Runtime).
+* **Eastbound / Westbound Interfaces:** Used for state synchronization, high-availability clustering, and coordination between peer ONOS controller instances.

@@ -1,0 +1,39 @@
+SDN Worksheet Unit 2 Section 9
+### Question
+
+Scenario: A company is migrating from a traditional network to an SDN-enabled one. During the transition, they need to support both legacy devices and new OpenFlow-enabled switches.
+Question: How do SDN controllers generally handle the interoperability between legacy (non-OpenFlow) and OpenFlow-enabled devices in a hybrid environment?
+
+---
+
+### Answer
+
+In a brownfield migration, SDN controllers bridge the architectural gap between legacy, autonomously routed networks and OpenFlow-controlled domains through several complementary hybrid interoperability mechanisms:
+
+* **Multi-Protocol Southbound Plugins:**
+* Modern enterprise controllers (such as OpenDaylight and ONOS) do not limit their southbound interfaces to OpenFlow.
+* They integrate legacy southbound protocol drivers and configuration plugins, including **SNMP**, **NETCONF/YANG**, **BGP-LS**, and **OVSDB**.
+* This allows the controller to read interface statuses, configure VLANs, and retrieve routing tables from legacy routers while simultaneously programming match-action flow entries into OpenFlow switches from a single platform.
+
+
+* **BGP / IGP Peering and Control-Plane Federation:**
+* To exchange routing information across domain boundaries, the SDN controller (or an application running on top of it, such as ONOS SDN-IP) acts as a standard routing peer.
+* The controller speaks standard exterior and interior gateway protocols (e.g., **BGP**, **OSPF**, or **IS-IS**) directly to legacy core or border routers.
+* When a legacy router advertises a subnet, the controller ingests the prefix and automatically translates the IP reachability information into corresponding OpenFlow flow rules pushed to the SDN switches. Conversely, it advertises the SDN domain’s internal subnets outward to legacy peers.
+
+
+* **Hybrid-Mode (Ships-in-the-Night / Hybrid OpenFlow) Switches:**
+* Many enterprise hardware switches support a dual-stack operational model known as "hybrid mode" or "OpenFlow-hybrid."
+* The switch processes standard Layer 2 bridging (STP, LACP) and Layer 3 routing (OSPF, BGP) using its traditional embedded firmware stack, while concurrently maintaining dedicated OpenFlow flow tables.
+* The controller programs rules that selectively intercept specific traffic flows (e.g., experimental, high-priority, or cloud workloads) via OpenFlow, while permitting all non-matching or unmanaged packets to drop through to the switch's legacy ASIC forwarding pipeline (often using an action like `NORMAL`).
+
+
+* **VLAN and L2/L3 Gateway Stitching:**
+* Interoperability at the edge is frequently maintained by designating boundary devices as translation gateways.
+* The SDN controller configures OpenFlow switches at the perimeter to encapsulate/decapsulate standard 802.1Q VLAN tags, MPLS labels, or VXLAN headers matching the legacy environment's broadcast domains.
+* This allows virtual machines and hosts in the SDN fabric to seamlessly communicate with bare-metal servers or user workstations hosted on legacy VLANs without re-addressing or physical reconfiguration.
+
+
+* **Topology and Topology Discovery Bridging:**
+* Legacy switches communicate topology through standard Link Layer Discovery Protocol (LLDP) or Cisco Discovery Protocol (CDP), whereas OpenFlow controllers inject customized LLDP packet-outs to map links.
+* Controllers handle this by parsing both standard network discovery packets and controller-tagged LLDP frames, allowing the controller to construct a unified topology map that includes both OpenFlow-managed links and adjacent non-OpenFlow nodes.

@@ -1,0 +1,82 @@
+SDN Worksheet Unit 4 Section 6
+### Case Study – 2 (SLO-2): Applying SDN for Monitoring, Traffic Engineering, and Security
+
+---
+
+### a) Implementation of SDN-Based Monitoring and Traffic Engineering
+
+The solution operates as a closed-loop automation system consisting of three continuous stages: real-time telemetry collection, centralized path calculation, and dynamic flow programming.
+
+* **1. Real-Time Network Monitoring & Telemetry Collection:**
+* **Fine-Grained Data-Plane Telemetry:**
+* Backbone switches use streaming protocols (such as sFlow, NetFlow/IPFIX, or In-band Network Telemetry / INT) instead of slow, legacy SNMP polling.
+* Switches report port counters, link latency, buffer occupancy, and packet loss in real time directly to the SDN monitoring application.
+
+
+* **Controller Event Subscriptions:**
+* The centralized SDN controller listens to southbound asynchronous messages (e.g., OpenFlow `Port-Status` or BGP-LS/gNMI link state updates) to detect fiber cuts or interface flaps in milliseconds.
+
+
+* **Global Topology & Traffic Matrix Mapping:**
+* A monitoring NetApp running on top of the controller aggregates these measurements into a live, real-time map showing exactly which links are near saturation and where traffic is heading.
+
+
+
+
+* **2. Intelligent Traffic Engineering (TE) Computation:**
+* **Centralized Path Optimization:**
+* Unlike distributed routing protocols (like OSPF or IS-IS) that compute paths based solely on static link costs, the SDN Traffic Engineering application computes multi-constrained paths based on live bandwidth demand, latency, and packet loss.
+
+
+* **Elephant vs. Mice Flow Classification:**
+* The monitoring app identifies high-volume, long-lived data transfers ("elephant flows") versus short, latency-sensitive transactions ("mice flows").
+* Elephant flows are steered onto high-capacity backbone links, keeping primary low-latency paths clear for interactive traffic.
+
+
+
+
+* **3. Dynamic Flow Rule Programming:**
+* **Southbound Execution (OpenFlow / P4Runtime / Segment Routing):**
+* Once new routes are calculated, the controller programs the backbone nodes by pushing updated flow rules or updating Segment Routing (SRv6/SR-MPLS) label stacks.
+
+
+* **Zero-Touch Rerouting:**
+* The ingress border router encapsulates the packet with instructions (such as a segment list or VLAN tag), directing the flow along the newly optimized path across the backbone without needing manual CLI reconfiguration on intermediate routers.
+
+
+
+
+
+---
+
+### b) How SDN Improves Network Performance and Security
+
+* **Network Performance Improvements:**
+* **Elimination of Congestion Hotspots (Global Multipathing):**
+* Traditional routing defaults to the single shortest path, causing primary trunk links to choke while parallel secondary circuits sit idle.
+* The SDN controller actively distributes traffic across all available redundant backbone links using dynamic load balancing, maximizing total network utilization and preventing bottlenecks.
+
+
+* **Sub-Second Self-Healing from Failures:**
+* When a backbone fiber cut occurs, the SDN controller detects the failure immediately through port-down events.
+* Instead of waiting seconds for distributed routing protocols to reconverge (which causes packet drops), the controller instantly shifts affected flows onto pre-computed backup paths or pushes alternative label stacks in milliseconds.
+
+
+* **Predictable Service Level Agreements (SLAs):**
+* By continuously matching traffic requirements with real-time link performance, premium services (like voice and enterprise VPNs) are guaranteed strictly bounded latency and jitter, while non-critical bulk data is moved to best-effort paths.
+
+
+
+
+* **Network Security Improvements:**
+* **Rapid Ingress Mitigation of Volumetric Attacks (DDoS):**
+* When a link experiences abnormal traffic spikes indicative of a DDoS attack, the SDN monitoring application flags the anomaly and identifies the attack signature (source IPs, ports, or protocol patterns).
+* Rather than letting attack traffic traverse the core backbone, the controller pushes line-rate `DROP` or rate-limiting rules directly to the edge/ingress routers, killing the malicious flood before it consumes backbone capacity.
+
+
+* **Dynamic Traffic Redirection to Scrubbing Centers:**
+* For suspicious but unconfirmed traffic, the SDN controller dynamically alters flow rules to route the packets through virtualized security appliances (like Deep Packet Inspection / DPI or IDS/IPS) for detailed scrubbing, returning only clean traffic back to the backbone.
+
+
+* **Granular Flow Isolation and Quarantine:**
+* If a compromised node or misbehaving customer subnet is detected, the controller dynamically installs micro-isolation rules that block unauthorized lateral movement across the backbone without disrupting legitimate user sessions.

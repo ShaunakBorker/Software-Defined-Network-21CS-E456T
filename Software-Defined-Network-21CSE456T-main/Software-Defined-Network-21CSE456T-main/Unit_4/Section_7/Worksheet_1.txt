@@ -1,0 +1,79 @@
+SDN Worksheet Unit 4 Section 7
+### Case Study – 1 (SLO-1): Understanding Dynamic Bandwidth Provisioning in SDN
+
+---
+
+### a) Objective of Dynamic Bandwidth Provisioning in SDN
+
+* **Preventing Congestion Hotspots:**
+* In a traditional data center, routing protocols typically steer traffic down static shortest paths. This causes primary trunk links to saturate under heavy loads while alternate physical links sit mostly idle.
+* The core objective is to dynamically balance workloads across all available network paths in real time, moving excess traffic away from congested links to underutilized paths.
+
+
+* **Differentiated Quality of Service (QoS) & SLA Assurance:**
+* Different applications have conflicting network requirements:
+* **Database transactions:** Require strictly bounded, low latency and zero packet loss.
+* **Video streaming:** Requires sustained, high-throughput bandwidth.
+* **File backups:** High-volume bulk traffic that is tolerant to delays.
+
+
+* Dynamic bandwidth provisioning ensures high-priority, revenue-critical services (databases, live streams) are guaranteed dedicated bandwidth slices, while background tasks (backups) are throttled or shifted during peak hours.
+
+
+* **Maximizing Physical Infrastructure Efficiency:**
+* Instead of over-provisioning expensive physical fiber and switches to handle rare peak traffic bursts, dynamic provisioning squeezes maximum utilization out of existing links, lowering overall capital expenditures (CapEx).
+
+
+* **Closed-Loop Automated Adaptation:**
+* Eliminates manual network engineering intervention by creating a self-driving feedback loop that automatically senses traffic changes, computes adjustments, and updates forwarding rules in seconds.
+
+
+
+---
+
+### b) Main Functional Modules Involved in this SDN Use Case
+
+```
++-------------------------------------------------------------+
+|                     Application Layer                       |
+|  [ Traffic Profiler / App ] <---> [ Bandwidth Allocator /  ] |
+|                                   [ Optimization Engine    ] |
++------------------------------+------------------------------+
+                               | Northbound API (REST / Intent)
++------------------------------v------------------------------+
+|                     Control Plane (SDN)                     |
+|  [ Real-Time Telemetry    ]       [ Flow Rule & QoS Manager] |
+|  [ & Monitoring Module    ]       [ (OpenFlow / OVSDB /    ] |
+|  (sFlow / INT / Counters)         [  P4Runtime)            ] |
++------------------------------+------------------------------+
+                               | Southbound Protocols
++------------------------------v------------------------------+
+|                     Data Plane (Switches)                   |
+|       [ Switch Flow Tables ] <---> [ Hardware QoS Queues ]   |
++-------------------------------------------------------------+
+
+```
+
+* **1. Real-Time Telemetry and Monitoring Module:**
+* **Role:** Continuously collects fine-grained performance metrics from every switch and link in the data center.
+* **Metrics Gathered:** Port byte/packet counters, link utilization percentages, buffer queue depths, latency, and packet drops using protocols like sFlow, IPFIX, OpenFlow port statistics, or In-band Network Telemetry (INT).
+
+
+* **2. Traffic Classifier and Profiling Module:**
+* **Role:** Inspects incoming flows and classifies them by application type and priority.
+* **Function:** Differentiates between latency-sensitive "mice flows" (e.g., database queries) and high-volume, long-lived "elephant flows" (e.g., scheduled database backups or virtual machine migrations).
+
+
+* **3. Bandwidth Allocation and Path Optimization Engine:**
+* **Role:** The analytical "brain" running on top of the SDN controller.
+* **Function:** Uses optimization algorithms (such as multi-commodity flow or constrained shortest path algorithms) to calculate optimal routing paths and bandwidth allocations based on live network state and application Service Level Agreements (SLAs).
+
+
+* **4. Flow and QoS Rule Management Module (Policy Enforcement):**
+* **Role:** Translates the optimization engine's decisions into concrete switch instructions.
+* **Function:** Pushes OpenFlow meter tables, queue configurations (via OVSDB or NETCONF), and flow table entries down to the physical/virtual switches to enforce rate limits, assign traffic to specific hardware priority queues, or reroute flows over alternate links.
+
+
+* **5. Data Plane Enforcement Elements (Hardware/vSwitches):**
+* **Role:** Physical leaf/spine switches and virtual switches (like Open vSwitch) that execute the instructions.
+* **Function:** Enforces per-port queuing disciplines (e.g., Hierarchical Token Bucket / HTB, Strict Priority), meters, and flow forwarding actions directly on data packets at wire speed.
